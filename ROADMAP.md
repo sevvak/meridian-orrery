@@ -2,14 +2,14 @@
 
 We build one step at a time. Each step is one release: it ships on GitHub Pages, works on a phone, and keeps everything that already works.
 
-## Step 0 — New physics engine
+## Step 0 — New physics engine ✓
 
-- [ ] Every body has a mass, and the sun becomes a body that can move
-- [ ] Leapfrog integration (more accurate than the old method)
-- [ ] Camera follows the system's centre of mass, so the sun's wobble is real
-- [ ] "Planet mass" control (none, real, ×10, ×100) replaces "Planet pull"
-- [ ] Presets use real mass ratios (Jupiter's moons, TRAPPIST-1, inner planets)
-- [ ] Sun wobble plot in the orbit log
+- [x] Every body has a mass, and the sun becomes a body that can move
+- [x] Leapfrog integration (more accurate than the old method)
+- [x] Camera follows the system's centre of mass, so the sun's wobble is real
+- [x] "Planet mass" control (none, real, ×10, ×100) replaces "Planet pull"
+- [x] Presets use real mass ratios (Jupiter's moons, TRAPPIST-1, inner planets)
+- [x] Sun wobble plot in the orbit log
 
 ## Milestone A — Quick wins
 

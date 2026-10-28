@@ -44,11 +44,16 @@ body{margin:0;background:var(--ink);color:var(--parchment);font-family:var(--mon
 .log td:first-child{max-width:96px;overflow:hidden;text-overflow:ellipsis}
 .log .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
 .log .empty{color:var(--muted);text-align:left!important;padding:6px 0;line-height:1.5;white-space:normal}
-.log footer{margin-top:8px;padding-top:8px;border-top:1px solid var(--brass-soft);color:var(--muted);font-size:10.5px;line-height:1.6;display:grid;gap:2px}
+.wobble{display:flex;gap:12px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--brass-soft)}
+.wobble canvas{width:84px;height:84px;flex:none;border:1px solid var(--brass-soft);border-radius:50%;background:rgba(7,11,24,.6)}
+.wobble div{min-width:0;color:var(--muted);font-size:10.5px;line-height:1.55}
+.wobble b{display:block;font-weight:500;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass);margin-bottom:3px}
+.wobble strong{color:var(--parchment);font-weight:500;font-variant-numeric:tabular-nums}
+.log footer{margin-top:10px;padding-top:8px;border-top:1px solid var(--brass-soft);color:var(--muted);font-size:10.5px;line-height:1.6;display:grid;gap:2px}
 .log footer strong{color:var(--brass);font-weight:500;font-variant-numeric:tabular-nums}
 .narrow-only{display:none}
 @media (max-width:720px){
-  .log{display:none;left:calc(env(safe-area-inset-left,0px) + 16px);right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 16px);width:auto;max-height:45%}
+  .log{display:none;left:calc(env(safe-area-inset-left,0px) + 16px);right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 16px);width:auto;max-height:50%}
   .log.open{display:block}
   .narrow-only{display:inline-block}
 }
@@ -77,9 +82,8 @@ button[aria-expanded="true"]{border-color:var(--brass);color:var(--brass)}
 .seg button + button{border-left:1px solid var(--brass-soft)}
 .seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink)}
 input[type=range]{accent-color:var(--brass);flex:1;min-width:90px}
-input[type=checkbox]{accent-color:var(--brass);width:16px;height:16px;margin:0}
 output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font-size:12px}
-.tune .note{color:var(--muted);font-size:11px}
+.tune .note{color:var(--muted);font-size:11px;line-height:1.5;flex-basis:100%}
 @media (prefers-reduced-motion:reduce){button.primary.waiting{animation:none}}
 </style>
 <style>
@@ -102,6 +106,10 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     <thead><tr><th>Body</th><th>Note</th><th>Period</th><th>Radius</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
+  <div class="wobble">
+    <canvas id="wobble" aria-label="Path of the sun around the system's centre of mass"></canvas>
+    <div><b>Sun wobble</b><span id="wobbleText"></span></div>
+  </div>
   <footer>
     <span>Conjunctions seen: <strong id="conjCount">0</strong></span>
     <span>Period² ∝ radius³. Kepler's third law sets the rhythm.</span>
@@ -120,8 +128,11 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     <div class="ctl"><input id="tempo" type="range" min="50" max="200" value="100"><output id="tval" for="tempo">×1.00</output></div>
     <label class="lbl" for="gravity">Sun mass</label>
     <div class="ctl"><input id="gravity" type="range" min="50" max="200" value="100"><output id="gval" for="gravity">×1.00</output></div>
-    <label class="lbl" for="pull">Planet pull</label>
-    <div class="ctl"><input id="pull" type="checkbox"><span class="note">Planets tug on each other. Orbits drift into chaos.</span></div>
+    <span class="lbl">Planet mass</span>
+    <div class="ctl">
+      <div class="seg" id="mass" role="group" aria-label="Planet mass"><button type="button" data-v="0">None</button><button type="button" data-v="1">Real</button><button type="button" data-v="10">×10</button><button type="button" data-v="100">×100</button></div>
+      <span class="note">Real uses true mass ratios. Heavier planets tug on each other and on the sun, and resonant systems drift into chaos.</span>
+    </div>
   </section>
 
   <button id="sound" class="primary waiting" type="button">Start sound</button>
@@ -147,9 +158,12 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = id => document.getElementById(id);
 
-  // ---- world constants (1 unit = smaller viewport dimension; 1 au = 0.2 units) ----
+  // ---- world constants ----
+  // Units: 1 = smaller viewport dimension, G = 1, so a body's mass is its GM. 1 au = 0.2 units.
   const GM0 = 0.033, SUN_R = 0.03, R_MIN = 0.07, R_MAX = 0.47, N = 15, BW = (R_MAX - R_MIN) / N, AU = 0.2;
-  const THROW = 2.2, MAX_PLANETS = 14, TRAIL = reduce ? 30 : 110, DT = 1 / 240, PULL = 0.012;
+  const THROW = 2.2, MAX_PLANETS = 14, TRAIL = reduce ? 30 : 110, DT = 1 / 240, SOFT2 = 0.0004;
+  const JUPITER = 9.55e-4;               // Jupiter/Sun mass ratio: the default for thrown planets
+  const NEPTUNE = 5.15e-5;               // Neptune/Sun: light enough that resonant presets keep their rhythm
   const NAMES = ['C','C♯','D','E♭','E','F','F♯','G','G♯','A','B♭','B'];
   const GREEK = 'αβγδεζηθικλμνξοπρστυφχψω';
   const noteName = m => NAMES[m % 12] + (Math.floor(m / 12) - 1);
@@ -165,33 +179,35 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     wholeTone: { label: 'D whole tone', steps: [0, 2, 4, 6, 8, 10] },
   };
 
-  // Real period ratios; radius follows from Kepler: r = r0 · ratio^(2/3)
+  // Bodies: [name, period ratio, mass ratio to the central body]. Radius follows Kepler: r = r0 · ratio^(2/3).
+  const EARTH_TRAPPIST = 3.34e-5;        // one Earth mass relative to TRAPPIST-1 (0.0898 solar masses)
   const PRESETS = {
     twelve: { name: 'Twelve-beat alignment', r0: 0.1,
       text: 'Five planets with periods in the ratio 1 : 2 : 3 : 4 : 6. They line up on the meridian again every twelve beats.',
-      bodies: [['I', 1], ['II', 2], ['III', 3], ['IV', 4], ['V', 6]] },
+      bodies: [['I', 1, NEPTUNE], ['II', 2, NEPTUNE], ['III', 3, NEPTUNE], ['IV', 4, NEPTUNE], ['V', 6, NEPTUNE]] },
     galilean: { name: "Jupiter's moons", r0: 0.1,
       text: 'Io, Europa and Ganymede are locked in a 1 : 2 : 4 Laplace resonance. Callisto runs free on the outside.',
-      bodies: [['Io', 1], ['Europa', 2.0073], ['Ganymede', 4.0447], ['Callisto', 9.434]] },
+      bodies: [['Io', 1, 4.70e-5], ['Europa', 2.0073, 2.53e-5], ['Ganymede', 4.0447, 7.80e-5], ['Callisto', 9.434, 5.67e-5]] },
     trappist: { name: 'TRAPPIST-1', r0: 0.08,
       text: 'Seven Earth-sized worlds 40 light-years away, chained in resonances of 8:5, 5:3, 3:2, 3:2, 4:3 and 3:2.',
-      bodies: [['b', 1], ['c', 1.6029], ['d', 2.6802], ['e', 4.0371], ['f', 6.0935], ['g', 8.1758], ['h', 12.4211]] },
+      bodies: [['b', 1, 1.374], ['c', 1.6029, 1.308], ['d', 2.6802, 0.388], ['e', 4.0371, 0.692], ['f', 6.0935, 1.039], ['g', 8.1758, 1.321], ['h', 12.4211, 0.326]]
+        .map(([n, q, me]) => [n, q, me * EARTH_TRAPPIST]) },
     inner: { name: 'Inner planets', r0: AU * Math.pow(0.2408, 2 / 3),
-      text: 'Mercury, Venus, Earth and Mars at their true relative distances. Radius reads in real au here.',
-      bodies: [['Mercury', 1], ['Venus', 2.5548], ['Earth', 4.1528], ['Mars', 7.8108]] },
+      text: 'Mercury, Venus, Earth and Mars at their true relative distances and masses. Radius reads in real au here.',
+      bodies: [['Mercury', 1, 1.66e-7], ['Venus', 2.5548, 2.45e-6], ['Earth', 4.1528, 3.00e-6], ['Mars', 7.8108, 3.23e-7]] },
   };
 
-  // ---- settings (scale, voice, meridians remembered per viewer) ----
-  const S0 = { scale: 'minorPent', voice: 'bell', meridians: 1 };
+  // ---- settings (scale, voice, meridians, planet mass remembered per viewer) ----
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('meridian-orrery') || '{}') || {}; } catch (_) {}
   const settings = {
-    scale: SCALES[saved.scale] ? saved.scale : S0.scale,
-    voice: ['bell', 'marimba', 'glass'].includes(saved.voice) ? saved.voice : S0.voice,
-    meridians: [1, 2, 3, 4].includes(saved.meridians) ? saved.meridians : S0.meridians,
-    tempo: 1, gravity: 1, pull: false,
+    scale: SCALES[saved.scale] ? saved.scale : 'minorPent',
+    voice: ['bell', 'marimba', 'glass'].includes(saved.voice) ? saved.voice : 'bell',
+    meridians: [1, 2, 3, 4].includes(saved.meridians) ? saved.meridians : 1,
+    mass: [0, 1, 10, 100].includes(saved.mass) ? saved.mass : 1,
+    tempo: 1, gravity: 1,
   };
-  const persist = () => { try { localStorage.setItem('meridian-orrery', JSON.stringify({ scale: settings.scale, voice: settings.voice, meridians: settings.meridians })); } catch (_) {} };
+  const persist = () => { try { localStorage.setItem('meridian-orrery', JSON.stringify({ scale: settings.scale, voice: settings.voice, meridians: settings.meridians, mass: settings.mass })); } catch (_) {} };
 
   let NOTES = [], ROOT = [];
   function buildScale() {
@@ -208,10 +224,23 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   }
   buildScale(); buildMeridians();
 
-  let W, H, S, cx, cy, simT = 0, sunPulse = 0, paused = false, thrown = 0;
+  let W, H, S, cx, cy, SX = 0, SY = 0, simT = 0, sunPulse = 0, paused = false, thrown = 0, dirty = true;
   let planets = [], ripples = [], beams = [], drag = null;
   let conjCount = 0, wasAligned = false, lastConjReal = -9;
+  const sun = { x: 0, y: 0, vx: 0, vy: 0, ax: 0, ay: 0, path: [] };
+  const cam = { x: 0, y: 0 };
   const stars = document.createElement('canvas');
+
+  // ---- masses ----
+  const GM = () => GM0 * settings.gravity;                 // the sun
+  const massOf = p => p.m0 * GM0 * settings.mass;          // a planet
+  const rel = p => [p.x - sun.x, p.y - sun.y];
+  const relR = p => Math.hypot(p.x - sun.x, p.y - sun.y);
+  function com() {
+    let M = GM(), x = M * sun.x, y = M * sun.y, vx = M * sun.vx, vy = M * sun.vy;
+    for (const p of planets) { const m = massOf(p); M += m; x += m * p.x; y += m * p.y; vx += m * p.vx; vy += m * p.vy; }
+    return { x: x / M, y: y / M, vx: vx / M, vy: vy / M };
+  }
 
   // ---- layout ----
   function resize() {
@@ -233,21 +262,32 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       s.fillStyle = warm ? `rgba(230,200,140,${a})` : `rgba(210,215,240,${a})`;
       s.beginPath(); s.arc(rnd() * W, rnd() * H, 0.3 + rnd() * rnd() * 1.3, 0, 7); s.fill();
     }
+    const wc = $('wobble'); wc.width = wc.height = 84 * dpr; wc.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  const toScreen = (x, y) => [cx + x * S, cy + y * S];
-  const toWorld = e => ({ x: (e.clientX - cx) / S, y: (e.clientY - cy) / S });
+  const toScreen = (x, y) => [cx + (x - cam.x) * S, cy + (y - cam.y) * S];
+  const toWorld = e => ({ x: (e.clientX - cx) / S + cam.x, y: (e.clientY - cy) / S + cam.y });
   const sizeOf = i => 3 + ((N - 1 - i) / (N - 1)) * 4;
 
   // ---- planets & systems ----
-  const GM = () => GM0 * settings.gravity;
-  function addPlanet(x, y, vx, vy, name) {
+  function addPlanet(x, y, vx, vy, name, m0 = JUPITER) {
     if (planets.length >= MAX_PLANETS) planets.shift();
     if (!name) { name = 'Planet ' + GREEK[thrown % GREEK.length]; thrown++; }
-    planets.push({ name, x, y, vx, vy, trail: [], flash: 0, period: 0, last: {}, note: null });
+    planets.push({ name, m0, x, y, vx, vy, ax: 0, ay: 0, trail: [], flash: 0, period: 0, last: {}, note: null });
+    dirty = true;
   }
-  function circular(x, y, name) {              // clockwise on screen
-    const r = Math.hypot(x, y), v = Math.sqrt(GM() / r);
-    addPlanet(x, y, (-y / r) * v, (x / r) * v, name);
+  function circular(x, y, name, m0 = JUPITER) {   // clockwise on screen, relative to the sun
+    const rx = x - sun.x, ry = y - sun.y, r = Math.hypot(rx, ry);
+    const v = Math.sqrt((GM() + m0 * GM0 * settings.mass) / r);
+    addPlanet(x, y, sun.vx + (-ry / r) * v, sun.vy + (rx / r) * v, name, m0);
+  }
+  function resetSun() {
+    Object.assign(sun, { x: 0, y: 0, vx: 0, vy: 0, path: [] });
+    cam.x = cam.y = 0;
+  }
+  function centreOnMass() {   // put the centre of mass at rest at the origin; relative motion is unchanged
+    const c = com();
+    for (const b of [sun, ...planets]) { b.x -= c.x; b.y -= c.y; b.vx -= c.vx; b.vy -= c.vy; }
+    cam.x = cam.y = 0; dirty = true;
   }
   function loadPreset(key) {
     let p = PRESETS[key];
@@ -258,46 +298,70 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       const qs = [1, ...ok.slice(0, 2 + Math.floor(Math.random() * 4))].sort((a, b) => a - b);
       const fmt = q => Number.isInteger(q) ? String(q) : (q === 4 / 3 ? '4/3' : q === 3 / 2 ? '3/2' : q === 5 / 3 ? '5/3' : '5/2');
       p = { name: 'Random resonant chain', r0, text: 'Period ratios ' + qs.map(fmt).join(' : ') + '. Press N for another.',
-        bodies: qs.map((q, i) => ['Chain ' + (i + 1), q]) };
+        bodies: qs.map((q, i) => ['Chain ' + (i + 1), q, NEPTUNE]) };
     }
     planets = []; ripples = []; beams = []; wasAligned = false;
-    p.bodies.forEach(([name, q]) => circular(0, -p.r0 * Math.pow(q, 2 / 3), name)); // all start on the meridian
+    resetSun();
+    p.bodies.forEach(([name, q, m0]) => circular(0, -p.r0 * Math.pow(q, 2 / 3), name, m0)); // all start on the meridian
+    centreOnMass();
     $('caption').innerHTML = `<b>${p.name}</b>${p.text}`;
     renderLog();
   }
   function clearSky() {
     planets = []; ripples = []; beams = []; wasAligned = false;
+    resetSun(); dirty = true;
     $('caption').innerHTML = '<b>Empty sky</b>Drag anywhere to throw a planet, or load a system.';
     renderLog();
   }
 
-  // ---- physics ----
-  function step(dt) {
-    const gm = GM();
-    if (settings.pull) {
-      const gp = gm * PULL;
-      for (let a = 0; a < planets.length; a++) for (let b = a + 1; b < planets.length; b++) {
-        const A = planets[a], B = planets[b], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy + 0.0004;
-        const f = gp / (d2 * Math.sqrt(d2)) * dt;
-        A.vx += dx * f; A.vy += dy * f; B.vx -= dx * f; B.vy -= dy * f;
+  // ---- physics: every body pulls on every other; leapfrog (kick-drift-kick) integration ----
+  function accel() {
+    const Ms = GM(), mult = settings.mass;
+    sun.ax = sun.ay = 0;
+    for (const p of planets) p.ax = p.ay = 0;
+    for (let a = 0; a < planets.length; a++) {
+      const A = planets[a], mA = A.m0 * GM0 * mult;
+      const dx = A.x - sun.x, dy = A.y - sun.y, r2 = dx * dx + dy * dy, inv = 1 / (r2 * Math.sqrt(r2) + 1e-9);
+      A.ax -= Ms * dx * inv; A.ay -= Ms * dy * inv;
+      sun.ax += mA * dx * inv; sun.ay += mA * dy * inv;
+      if (mult === 0) continue;
+      for (let b = a + 1; b < planets.length; b++) {
+        const B = planets[b], mB = B.m0 * GM0 * mult;
+        const ex = B.x - A.x, ey = B.y - A.y, d2 = ex * ex + ey * ey + SOFT2, f = 1 / (d2 * Math.sqrt(d2));
+        A.ax += mB * ex * f; A.ay += mB * ey * f;
+        B.ax -= mA * ex * f; B.ay -= mA * ey * f;
       }
     }
+  }
+  function step(dt) {
+    if (dirty) { accel(); dirty = false; }
+    const h = dt / 2, all = [sun, ...planets];
+    for (const b of all) { b.vx += b.ax * h; b.vy += b.ay * h; }
+    for (const p of planets) { p.px = p.x - sun.x; p.py = p.y - sun.y; }
+    for (const b of all) { b.x += b.vx * dt; b.y += b.vy * dt; }
+    accel();
+    for (const b of all) { b.vx += b.ax * h; b.vy += b.ay * h; }
     for (const p of planets) {
-      const r2 = p.x * p.x + p.y * p.y, r = Math.sqrt(r2), a = gm / (r2 * r + 1e-7);
-      p.vx -= p.x * a * dt; p.vy -= p.y * a * dt;
-      const px = p.x, py = p.y;
-      p.x += p.vx * dt; p.y += p.vy * dt;
+      const [rx, ry] = rel(p), r = Math.hypot(rx, ry);
       for (let k = 0; k < MER.length; k++) {
-        const m = MER[k], before = -px * m.s + py * m.c, after = -p.x * m.s + p.y * m.c;
+        const m = MER[k], before = -p.px * m.s + p.py * m.c, after = -rx * m.s + ry * m.c;
         if ((before < 0) !== (after < 0)) {
-          const along = p.x * m.c + p.y * m.s;
+          const along = rx * m.c + ry * m.s;
           if (along > 0) chime(p, k, along, after > before ? 1 : -1);
         }
       }
       if (r < SUN_R) p.dead = 'sun'; else if (r > 1.6) p.dead = 'lost';
     }
     if (planets.some(p => p.dead)) {
-      planets = planets.filter(p => { if (p.dead === 'sun') swallow(); return !p.dead; });
+      planets = planets.filter(p => {
+        if (p.dead === 'sun') {   // the sun swallows the planet and its momentum
+          const m = massOf(p), M = GM();
+          sun.vx = (M * sun.vx + m * p.vx) / (M + m); sun.vy = (M * sun.vy + m * p.vy) / (M + m);
+          swallow();
+        }
+        return !p.dead;
+      });
+      dirty = true;
     }
     simT += dt;
   }
@@ -309,7 +373,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       if (p.last[dir] != null) p.period = simT - p.last[dir];
       p.last[dir] = simT;
     }
-    ripples.push({ x: r * m.c, y: r * m.s, c: m.c, s: m.s, i, age: 0, kind: 'note' });
+    ripples.push({ x: r * m.c, y: r * m.s, c: m.c, s: m.s, i, age: 0, kind: 'note' });   // stored relative to the sun
     sunPulse = Math.min(1, sunPulse + 0.15);
     const pan = k === 0 ? (i / (N - 1) - 0.5) * 0.9 : m.c * 0.8;
     play(settings.voice, NOTES[i], pan, (0.16 + (N - 1 - i) / (N - 1) * 0.08) * (k === 0 ? 1 : 0.75));
@@ -319,7 +383,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   // ---- conjunctions: 3+ planets (and most of the system) on one ray from the sun ----
   function detectConjunction(now) {
     const pts = [];
-    for (const p of planets) { const r = Math.hypot(p.x, p.y); if (r > 0.04 && r < 0.6) pts.push({ p, a: Math.atan2(p.y, p.x) }); }
+    for (const p of planets) { const [rx, ry] = rel(p), r = Math.hypot(rx, ry); if (r > 0.04 && r < 0.6) pts.push({ p, a: Math.atan2(ry, rx) }); }
     pts.sort((u, v) => u.a - v.a);
     const n = pts.length, WIN = 0.055;
     let best = null;
@@ -338,7 +402,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       lastConjReal = now; conjCount++;
       const a = best.list.reduce((s, o) => s + o.a, 0) / best.c;
       beams.push({ a, members: best.list.map(o => o.p), age: 0, c: best.c });
-      const notes = [...new Set(best.list.map(o => NOTES[o.p.note ?? band(Math.hypot(o.p.x, o.p.y))]))].sort((x, y) => x - y);
+      const notes = [...new Set(best.list.map(o => NOTES[o.p.note ?? band(relR(o.p))]))].sort((x, y) => x - y);
       notes.forEach((m, idx) => play('glass', m, (idx / Math.max(1, notes.length - 1) - 0.5) * 0.6, 0.07, idx * 0.045));
       play('glass', 38, 0, 0.14);
       $('conjCount').textContent = conjCount;
@@ -410,7 +474,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     let best = null, bd = Infinity;
     for (const p of planets) {
       const [x, y] = toScreen(p.x, p.y), d = Math.hypot(x - e.clientX, y - e.clientY);
-      const i = p.note ?? band(Math.hypot(p.x, p.y));
+      const i = p.note ?? band(relR(p));
       if (d < Math.max(14, sizeOf(i) + 8) && d < bd) { bd = d; best = p; }
     }
     return best;
@@ -418,14 +482,15 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   cv.addEventListener('pointerdown', e => {
     const hit = hitPlanet(e);
     if (hit) {
-      planets = planets.filter(p => p !== hit);
-      ripples.push({ x: hit.x, y: hit.y, i: hit.note ?? band(Math.hypot(hit.x, hit.y)), age: 0, kind: 'pop' });
-      pop(Math.max(-1, Math.min(1, hit.x * 2)));
+      planets = planets.filter(p => p !== hit); dirty = true;
+      const [rx, ry] = rel(hit);
+      ripples.push({ x: rx, y: ry, i: hit.note ?? band(Math.hypot(rx, ry)), age: 0, kind: 'pop' });
+      pop(Math.max(-1, Math.min(1, rx * 2)));
       renderLog();
       return;
     }
     const p = toWorld(e);
-    if (Math.hypot(p.x, p.y) < SUN_R * 1.6) return;
+    if (Math.hypot(p.x - sun.x, p.y - sun.y) < SUN_R * 1.6) return;
     cv.setPointerCapture(e.pointerId);
     drag = { x: p.x, y: p.y, ex: p.x, ey: p.y };
   });
@@ -437,7 +502,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     if (!drag) return;
     const dx = drag.ex - drag.x, dy = drag.ey - drag.y;
     if (Math.hypot(dx, dy) < 0.015) circular(drag.x, drag.y);
-    else addPlanet(drag.x, drag.y, dx * THROW, dy * THROW);
+    else addPlanet(drag.x, drag.y, sun.vx + dx * THROW, sun.vy + dy * THROW);
     drag = null; renderLog();
   });
   cv.addEventListener('pointercancel', () => { drag = null; });
@@ -482,9 +547,12 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   }
   segment('voice', 'voice', v => v, () => play(settings.voice, NOTES[9], 0, 0.18));
   segment('meridians', 'meridians', v => Number(v), buildMeridians);
-  const slider = (id, outId, key) => $(id).addEventListener('input', () => { settings[key] = $(id).value / 100; $(outId).textContent = '×' + settings[key].toFixed(2); });
-  slider('tempo', 'tval', 'tempo'); slider('gravity', 'gval', 'gravity');
-  $('pull').addEventListener('change', e => { settings.pull = e.target.checked; });
+  segment('mass', 'mass', v => Number(v), () => { dirty = true; sun.path = []; });
+  const slider = (id, outId, key, after) => $(id).addEventListener('input', () => {
+    settings[key] = $(id).value / 100; $(outId).textContent = '×' + settings[key].toFixed(2); after && after();
+  });
+  slider('tempo', 'tval', 'tempo');
+  slider('gravity', 'gval', 'gravity', () => { dirty = true; });
 
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input,select,textarea')) return;
@@ -496,53 +564,52 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     else if (k === 't') toggleTune();
   });
 
-  // ---- drawing ----
+  // ---- drawing (everything instrument-like is centred on the sun, which can now move) ----
   function drawInstrument() {
     const labelsAll = BW * S >= 15;
     ctx.lineWidth = 1;
     for (let k = 0; k <= N; k++) {
       const r = (R_MAX - k * BW) * S, root = k < N && ROOT[k];
       ctx.strokeStyle = root ? 'rgba(212,176,106,.13)' : 'rgba(212,176,106,.05)';
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(SX, SY, r, 0, 7); ctx.stroke();
     }
     MER.forEach((m, k) => {
       const r0 = SUN_R * S * 1.4, r1 = R_MAX * S + 10;
       ctx.strokeStyle = k === 0 ? 'rgba(212,176,106,.45)' : 'rgba(212,176,106,.22)';
-      ctx.beginPath(); ctx.moveTo(cx + m.c * r0, cy + m.s * r0); ctx.lineTo(cx + m.c * r1, cy + m.s * r1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(SX + m.c * r0, SY + m.s * r0); ctx.lineTo(SX + m.c * r1, SY + m.s * r1); ctx.stroke();
     });
-    const top = cy - R_MAX * S - 10;
+    const top = SY - R_MAX * S - 10;
     ctx.font = '500 9.5px "IBM Plex Mono", ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(212,176,106,.8)';
-    ctx.fillText('M E R I D I A N', cx, top - 8);
+    ctx.fillText('M E R I D I A N', SX, top - 8);
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     for (let i = 0; i < N; i++) {
       if (!labelsAll && !ROOT[i]) continue;
       ctx.fillStyle = ROOT[i] ? 'rgba(212,176,106,.75)' : 'rgba(154,150,179,.55)';
-      ctx.fillText(noteName(NOTES[i]), cx - 7, cy - (R_MAX - (i + 0.5) * BW) * S);
+      ctx.fillText(noteName(NOTES[i]), SX - 7, SY - (R_MAX - (i + 0.5) * BW) * S);
     }
     ctx.textBaseline = 'alphabetic';
   }
   function drawSun() {
     const r = SUN_R * S, glow = r * (3.2 + sunPulse * 1.6);
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, glow);
+    const g = ctx.createRadialGradient(SX, SY, 0, SX, SY, glow);
     g.addColorStop(0, 'rgba(255,240,205,1)');
     g.addColorStop(0.22, 'rgba(250,206,120,.85)');
     g.addColorStop(0.5, 'rgba(230,150,70,.18)');
     g.addColorStop(1, 'rgba(230,150,70,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, glow, 0, 7); ctx.fill();
-    ctx.fillStyle = '#fff4dc'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, 0, 7); ctx.fill();
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(SX, SY, glow, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff4dc'; ctx.beginPath(); ctx.arc(SX, SY, r * 0.62, 0, 7); ctx.fill();
   }
   const LIFE = { note: 1.1, sun: 1.4, pop: 0.6 };
   function drawRipples(dt) {
     for (const rp of ripples) rp.age += dt;
     ripples = ripples.filter(r => r.age < LIFE[r.kind]);
     for (const rp of ripples) {
-      const [x, y] = toScreen(rp.x, rp.y), t = rp.age / LIFE[rp.kind];
+      const x = SX + rp.x * S, y = SY + rp.y * S, t = rp.age / LIFE[rp.kind];
       if (rp.kind === 'note') {
         const half = BW * S * 0.5;
         ctx.strokeStyle = col(rp.i, (1 - t) * 0.9, 78); ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.moveTo(x - rp.c * half, y - rp.s * half); ctx.lineTo(x + rp.c * half, y + rp.s * half); ctx.stroke();
-        if (reduce) continue;
       }
       if (reduce) continue;
       const rad = rp.kind === 'sun' ? SUN_R * S * (1 + t * 7) : rp.kind === 'pop' ? 6 + t * 22 : 4 + t * 34;
@@ -558,13 +625,13 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     beams = beams.filter(b => b.age < 2.6);
     for (const b of beams) {
       const t = b.age / 2.6, a = 1 - t, c = Math.cos(b.a), s = Math.sin(b.a), len = R_MAX * S + 26;
-      const ex = cx + c * len, ey = cy + s * len;
-      const g = ctx.createLinearGradient(cx, cy, ex, ey);
+      const ex = SX + c * len, ey = SY + s * len;
+      const g = ctx.createLinearGradient(SX, SY, ex, ey);
       g.addColorStop(0, `rgba(255,236,190,${0.9 * a})`); g.addColorStop(1, 'rgba(212,176,106,0)');
       ctx.strokeStyle = g; ctx.lineWidth = 12; ctx.globalAlpha = 0.18;
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(SX, SY); ctx.lineTo(ex, ey); ctx.stroke();
       ctx.globalAlpha = 1; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(SX, SY); ctx.lineTo(ex, ey); ctx.stroke();
       for (const p of b.members) {
         const [x, y] = toScreen(p.x, p.y);
         ctx.strokeStyle = `rgba(255,236,190,${0.7 * a})`; ctx.lineWidth = 1;
@@ -581,7 +648,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   function drawPlanets(dt) {
     for (const p of planets) {
       if (!paused) { p.trail.push(p.x, p.y); if (p.trail.length > TRAIL * 2) p.trail.splice(0, 2); }
-      const i = p.note ?? band(Math.hypot(p.x, p.y)), tr = p.trail, n = tr.length / 2;
+      const i = p.note ?? band(relR(p)), tr = p.trail, n = tr.length / 2;
       ctx.lineWidth = 1.4; ctx.strokeStyle = col(i, 1);
       for (let k = 1; k < n; k++) {
         ctx.globalAlpha = (k / n) * 0.55;
@@ -614,36 +681,61 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     const dx = drag.ex - drag.x, dy = drag.ey - drag.y;
     ctx.fillStyle = 'rgba(236,227,207,.9)'; ctx.beginPath(); ctx.arc(sx, sy, 4, 0, 7); ctx.fill();
     if (Math.hypot(dx, dy) < 0.015) {
-      const r = Math.hypot(drag.x, drag.y);
+      const r = Math.hypot(drag.x - sun.x, drag.y - sun.y);
       ctx.setLineDash([2, 6]); ctx.strokeStyle = 'rgba(236,227,207,.35)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(cx, cy, r * S, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-      noteTag(cx, cy - r * S, band(r));
+      ctx.beginPath(); ctx.arc(SX, SY, r * S, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      noteTag(SX, SY - r * S, band(r));
       return;
     }
     ctx.strokeStyle = 'rgba(236,227,207,.6)'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-    let x = drag.x, y = drag.y, vx = dx * THROW, vy = dy * THROW, tag = null; const gm = GM(), h = 1 / 120;
+    // predicted path relative to the sun (the sun's own wobble is too small to matter here)
+    let x = drag.x - sun.x, y = drag.y - sun.y, vx = dx * THROW, vy = dy * THROW, tag = null; const gm = GM(), h = 1 / 120;
     ctx.fillStyle = 'rgba(212,176,106,.55)';
     for (let k = 0; k < 900; k++) {
       const r2 = x * x + y * y, r = Math.sqrt(r2), a = gm / (r2 * r + 1e-7), px = x;
       vx -= x * a * h; vy -= y * a * h; x += vx * h; y += vy * h;
       if (!tag && (px < 0) !== (x < 0) && y < 0) tag = { y: -y };
       if (r < SUN_R || r > 1.4) break;
-      if (k % 5 === 0) { const [qx, qy] = toScreen(x, y); ctx.globalAlpha = 1 - k / 900; ctx.beginPath(); ctx.arc(qx, qy, 1.1, 0, 7); ctx.fill(); }
+      if (k % 5 === 0) { ctx.globalAlpha = 1 - k / 900; ctx.beginPath(); ctx.arc(SX + x * S, SY + y * S, 1.1, 0, 7); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
-    if (tag) noteTag(cx, cy - tag.y * S, band(tag.y));
+    if (tag) noteTag(SX, SY - tag.y * S, band(tag.y));
   }
 
-  // ---- orbit log ----
+  // ---- orbit log + sun wobble plot ----
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtMag = m => { const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(m)) - 1)); return (Math.round(m / p) * p).toLocaleString('en-US'); };
+  function renderWobble() {
+    const wc = $('wobble'), w = wc.getContext('2d'), R = 42, path = sun.path;
+    w.clearRect(0, 0, 84, 84);
+    w.strokeStyle = 'rgba(212,176,106,.18)'; w.lineWidth = 1;
+    w.beginPath(); w.moveTo(R, 8); w.lineTo(R, 76); w.moveTo(8, R); w.lineTo(76, R); w.stroke();
+    let max = 0;
+    for (let k = 0; k < path.length; k += 2) max = Math.max(max, Math.hypot(path[k], path[k + 1]));
+    const text = $('wobbleText');
+    if (!planets.length || settings.mass === 0 || max < 1e-12) {
+      w.fillStyle = '#fff4dc'; w.beginPath(); w.arc(R, R, 2.5, 0, 7); w.fill();
+      text.textContent = settings.mass === 0 ? 'Planets are weightless, so the sun stays still.' : 'No planets pulling on the sun yet.';
+      return;
+    }
+    const k = (R - 8) / max;
+    w.strokeStyle = 'rgba(212,176,106,.85)'; w.lineWidth = 1;
+    w.beginPath();
+    for (let i = 0; i < path.length; i += 2) { const x = R + path[i] * k, y = R + path[i + 1] * k; i ? w.lineTo(x, y) : w.moveTo(x, y); }
+    w.stroke();
+    const n = path.length;
+    w.fillStyle = '#fff4dc'; w.beginPath(); w.arc(R + path[n - 2] * k, R + path[n - 1] * k, 2.5, 0, 7); w.fill();
+    text.innerHTML = `The sun circles the centre of mass, up to <strong>${(max / AU).toPrecision(2)} au</strong> away. Shown <strong>×${fmtMag(k / S)}</strong>.`;
+  }
   function renderLog() {
-    const list = planets.map(p => ({ p, r: Math.hypot(p.x, p.y) })).sort((a, b) => a.r - b.r);
+    const list = planets.map(p => ({ p, r: relR(p) })).sort((a, b) => a.r - b.r);
     $('rows').innerHTML = list.length ? list.map(({ p, r }) => {
       const i = p.note ?? band(r);
       return `<tr><td title="${esc(p.name)}"><span class="dot" style="background:${col(i)}"></span>${esc(p.name)}</td><td>${noteName(NOTES[i])}</td><td>${p.period ? (p.period / settings.tempo).toFixed(2) + ' s' : '…'}</td><td>${(r / AU).toFixed(2)} au</td></tr>`;
     }).join('') : '<tr><td colspan="4" class="empty">The sky is empty. Drag anywhere to throw a planet.</td></tr>';
     $('count').textContent = planets.length;
+    renderWobble();
   }
 
   // ---- loop ----
@@ -655,6 +747,11 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       while (acc >= DT) { step(DT); acc -= DT; }
       detectConjunction(now / 1000);
     } else acc = 0;
+    const c = com();
+    if (!paused && planets.length) { sun.path.push(sun.x - c.x, sun.y - c.y); if (sun.path.length > 1800) sun.path.splice(0, 2); }
+    const f = Math.min(1, d * 3);            // the camera eases toward the centre of mass
+    cam.x += (c.x - cam.x) * f; cam.y += (c.y - cam.y) * f;
+    [SX, SY] = toScreen(sun.x, sun.y);
     sunPulse = Math.max(0, sunPulse - d * 1.5);
     ctx.drawImage(stars, 0, 0, W, H);
     drawInstrument(); drawBeams(d); drawRipples(d); drawSun(); drawPlanets(d); drawAim();
@@ -665,6 +762,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   addEventListener('resize', resize);
   resize();
   loadPreset('twelve');
+  [SX, SY] = toScreen(sun.x, sun.y);
   requestAnimationFrame(frame);
 })();
 </script>

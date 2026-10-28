@@ -29,7 +29,7 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 - **Voice**: Bell (FM synthesis), Marimba or Glass
 - **Meridians**: 1 to 4 chime lines; more lines mean denser rhythms
 - **Tempo** and **Sun mass**
-- **Planet pull**: planets attract each other, so stable orbits slowly break down
+- **Planet mass**: None (weightless), Real (true mass ratios), ×10 or ×100. Heavier planets tug on each other and on the sun, and resonant systems drift into chaos.
 
 ## Keyboard
 
@@ -43,6 +43,10 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 
 ## How it works
 
-- Physics runs at a fixed 240 steps per second with a symplectic Euler integrator, which keeps orbits stable for a long time.
+- Every body pulls on every other body, the sun included. Physics runs at a fixed 240 steps per second with leapfrog (kick-drift-kick) integration, which conserves energy to about one part in a million over minutes of play.
+- Presets use real mass ratios: Jupiter's moons relative to Jupiter, the TRAPPIST-1 planets relative to their red dwarf, Mercury to Mars relative to the Sun. The twelve-beat system uses Neptune-sized planets so its rhythm holds.
+- The camera follows the system's centre of mass, so the sun visibly moves. The **Sun wobble** plot in the orbit log traces its path, magnified. Measuring this wobble is how astronomers found many real exoplanets.
 - A chime fires when a planet's position changes sign relative to a meridian ray. The note comes from the planet's distance at that moment, mapped onto 15 bands of the chosen scale.
 - Sound is pure Web Audio: FM bells, a generated reverb impulse, stereo panning by pitch, and a compressor on the master bus.
+
+See [ROADMAP.md](ROADMAP.md) for what's coming next.
