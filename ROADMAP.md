@@ -15,7 +15,7 @@ We build one step at a time. Each step is one release: it ships on GitHub Pages,
 
 - [ ] **1. Share links + record audio.** *(Postponed.)* The page link stores the whole system; a record button saves a sound loop.
 - [x] **2. Einstein mode.** The general-relativity correction near the sun makes orbits precess and draw rosettes. Includes perihelion markers, a live turn-per-orbit readout and the Einstein's rosettes preset.
-- [ ] **3. Kepler's second law.** Shade equal-time wedges with a tick per wedge, so eccentric planets audibly speed up near the sun.
+- [x] **3. Kepler's second law.** Equal-time wedges with a live equal-area readout, and ticks on a 30° dial that rush together as eccentric planets swing close to the sun. Includes the Kepler's laws preset.
 
 ## Milestone B — Three-body physics
 

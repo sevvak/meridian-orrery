@@ -22,6 +22,7 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 | TRAPPIST-1 | Seven Earth-sized planets chained in resonances of 8:5, 5:3, 3:2, 3:2, 4:3 and 3:2. |
 | Inner planets | Mercury to Mars at their true relative distances, read in au. |
 | Einstein's rosettes | Three eccentric orbits with relativity turned up. Each ellipse slowly turns, so its meridian note walks through the scale. |
+| Kepler's laws | One very eccentric planet and one circular planet with Kepler mode on. Equal-time wedges have equal areas; the ticks rush together near the sun. |
 | Random resonant chain | A new set of simple period ratios each time. |
 
 ## Tune panel
@@ -32,6 +33,7 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 - **Tempo** and **Sun mass**
 - **Planet mass**: None (weightless), Real (true mass ratios), ×10 or ×100. Heavier planets tug on each other and on the sun, and resonant systems drift into chaos.
 - **Einstein**: Off, 3°, 10° or 30° of perihelion turn per orbit at 1 au. See below.
+- **Kepler**: shows equal-time wedges and a ticking 30° dial. See below.
 
 ## Einstein mode
 
@@ -43,6 +45,14 @@ The real effect is tiny (Earth's orbit turns 0.04″ per lap), so the orrery exa
 - The orbit log's last column switches to **Turn/orbit**, measured live. At the 3° setting it matches Einstein's formula, Δφ = 6πGM / (c²a(1−e²)), within about 5%.
 - Because the ellipse turns, the distance at which a planet crosses the meridian changes, so its note slowly walks up and down the scale.
 
+## Kepler mode
+
+Kepler's second law says a line from the sun to a planet sweeps out equal areas in equal times. Kepler found it in 1609 from Tycho Brahe's observations of Mars. It is the same thing as conservation of angular momentum.
+
+- **Shaded wedges** each take one twelfth of the planet's orbital period. Far from the sun they are long and thin; close in they are short and fat. Their areas match.
+- The orbit log's last column switches to **Wedge area**: how far the twelve most recent wedges differ from their average. With Newton's gravity they agree to about ±0.02%. Einstein mode keeps them equal, because its extra pull still points straight at the sun. Heavy planets tugging on each other (Planet mass ×100) break the law, and the spread grows to over 1%.
+- **Ticks** fire every time a planet passes one of the 12 dotted spokes of the brass dial. A circular orbit ticks steadily. An eccentric one ticks slowly far out and in a rapid burst at closest approach, because its angular speed grows with 1/r². In the Kepler's laws preset the ticks run about 26 times faster at closest approach.
+
 ## Keyboard
 
 | Key | Action |
@@ -52,6 +62,7 @@ The real effect is tiny (Earth's orbit turns 0.04″ per lap), so the orrery exa
 | C | Clear the sky |
 | M | Mute / unmute |
 | E | Einstein mode on / off |
+| K | Kepler mode on / off |
 | T | Open the tune panel |
 
 ## How it works
