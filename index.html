@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A gravity sandbox where planets chime as they cross the meridian. Kepler's third law turns orbits into polyrhythms.">
+<meta name="theme-color" content="#0a1022">
+<title>Meridian Orrery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed night sky on canvas; title card top-left, orbit log top-right, instrument controls and a fold-out tuning panel along the bottom edge. Single dark look by choice (an astrolabe at night). */
+:root{
+  --ink:#0a1022;
+  --ink-raised:rgba(15,22,44,.84);
+  --ink-solid:#10172e;
+  --brass:#d4b06a;
+  --brass-soft:rgba(212,176,106,.24);
+  --parchment:#ece3cf;
+  --muted:#9a96b3;
+  --display:"Cormorant Garamond","Iowan Old Style",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23d4b06a' stroke-width='1.5'/%3E%3C/svg%3E");
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--parchment);font-family:var(--mono);font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased}
+#sky{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+
+.title{position:fixed;top:calc(env(safe-area-inset-top,0px) + 20px);left:calc(env(safe-area-inset-left,0px) + 20px);max-width:min(330px,calc(100vw - 40px));pointer-events:none}
+.title h1{font-family:var(--display);font-style:italic;font-weight:600;font-size:clamp(32px,5vw,46px);line-height:.95;margin:0;letter-spacing:.005em;text-wrap:balance}
+.title .lede{margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
+.title .system{margin:12px 0 0;padding-left:10px;border-left:1px solid var(--brass);font-size:12px;line-height:1.55;color:var(--parchment)}
+.title .system b{display:block;font:500 10px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--brass);margin-bottom:3px}
+@media (max-width:520px){.title .lede{display:none}.title .system{font-size:11px}}
+
+.log{position:fixed;top:calc(env(safe-area-inset-top,0px) + 20px);right:calc(env(safe-area-inset-right,0px) + 20px);width:300px;max-height:calc(100% - 200px);overflow:auto;background:var(--ink-raised);border:1px solid var(--brass-soft);border-radius:3px;padding:12px 14px 10px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2}
+.log h2{margin:0 0 8px;font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--brass);display:flex;justify-content:space-between}
+.log table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.log th{font:400 10px/1 var(--mono);color:var(--muted);text-align:left;padding:4px 0 6px;letter-spacing:.06em}
+.log th:not(:first-child),.log td:not(:first-child){text-align:right}
+.log td{padding:3px 0;font-size:11.5px;white-space:nowrap}
+.log td:first-child{max-width:96px;overflow:hidden;text-overflow:ellipsis}
+.log .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.log .empty{color:var(--muted);text-align:left!important;padding:6px 0;line-height:1.5;white-space:normal}
+.log footer{margin-top:8px;padding-top:8px;border-top:1px solid var(--brass-soft);color:var(--muted);font-size:10.5px;line-height:1.6;display:grid;gap:2px}
+.log footer strong{color:var(--brass);font-weight:500;font-variant-numeric:tabular-nums}
+.narrow-only{display:none}
+@media (max-width:720px){
+  .log{display:none;left:calc(env(safe-area-inset-left,0px) + 16px);right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 16px);width:auto;max-height:45%}
+  .log.open{display:block}
+  .narrow-only{display:inline-block}
+}
+
+.controls{position:fixed;left:0;right:0;bottom:0;padding:0 calc(env(safe-area-inset-right,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 14px) calc(env(safe-area-inset-left,0px) + 16px);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;pointer-events:none;z-index:3}
+.controls > *{pointer-events:auto}
+button,select{font:500 12px/1 var(--mono);letter-spacing:.04em;color:var(--parchment);background:var(--ink-raised);border:1px solid var(--brass-soft);border-radius:999px;padding:10px 15px;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+select{appearance:none;-webkit-appearance:none;background:var(--ink-raised) var(--chev) no-repeat right 13px center;padding-right:32px}
+select option{background:var(--ink-solid);color:var(--parchment)}
+button:hover,select:hover{border-color:var(--brass)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button.primary{background:var(--brass);color:var(--ink);border-color:var(--brass)}
+button.primary.waiting{animation:breathe 2.4s ease-in-out infinite}
+button[aria-expanded="true"]{border-color:var(--brass);color:var(--brass)}
+@keyframes breathe{50%{box-shadow:0 0 0 6px rgba(212,176,106,.18)}}
+.hint{flex-basis:100%;text-align:center;color:var(--muted);font-size:11px;letter-spacing:.03em;line-height:1.5;pointer-events:none}
+.hint kbd{font:inherit;color:var(--parchment);border:1px solid var(--brass-soft);border-radius:3px;padding:0 4px}
+@media (max-width:720px){.hint .keys{display:none}}
+
+.tune{flex-basis:100%;max-width:460px;background:var(--ink-raised);border:1px solid var(--brass-soft);border-radius:6px;padding:14px 16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px 12px;align-items:center}
+.tune .lbl{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.tune .ctl{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+.tune select{border-radius:4px;padding:8px 30px 8px 10px;width:100%}
+.seg{display:inline-flex;border:1px solid var(--brass-soft);border-radius:999px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:7px 12px}
+.seg button + button{border-left:1px solid var(--brass-soft)}
+.seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink)}
+input[type=range]{accent-color:var(--brass);flex:1;min-width:90px}
+input[type=checkbox]{accent-color:var(--brass);width:16px;height:16px;margin:0}
+output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font-size:12px}
+.tune .note{color:var(--muted);font-size:11px}
+@media (prefers-reduced-motion:reduce){button.primary.waiting{animation:none}}
+</style>
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="sky" aria-label="Orrery. Drag to throw a planet, tap empty sky to place one in a circular orbit, tap a planet to remove it."></canvas>
+
+<header class="title">
+  <h1>Meridian Orrery</h1>
+  <p class="lede">Every planet chimes as it crosses the meridian. Closer orbits ring higher.</p>
+  <p class="system" id="caption"></p>
+</header>
+
+<aside class="log" id="log">
+  <h2><span>Orbits</span><span id="count">0</span></h2>
+  <table>
+    <thead><tr><th>Body</th><th>Note</th><th>Period</th><th>Radius</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <footer>
+    <span>Conjunctions seen: <strong id="conjCount">0</strong></span>
+    <span>Period² ∝ radius³. Kepler's third law sets the rhythm.</span>
+  </footer>
+</aside>
+
+<nav class="controls">
+  <section class="tune" id="tune" aria-label="Tuning" hidden>
+    <label class="lbl" for="scale">Scale</label>
+    <div class="ctl"><select id="scale"></select></div>
+    <span class="lbl">Voice</span>
+    <div class="ctl"><div class="seg" id="voice" role="group" aria-label="Voice"><button type="button" data-v="bell">Bell</button><button type="button" data-v="marimba">Marimba</button><button type="button" data-v="glass">Glass</button></div></div>
+    <span class="lbl">Meridians</span>
+    <div class="ctl"><div class="seg" id="meridians" role="group" aria-label="Meridians"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button><button type="button" data-v="4">4</button></div></div>
+    <label class="lbl" for="tempo">Tempo</label>
+    <div class="ctl"><input id="tempo" type="range" min="50" max="200" value="100"><output id="tval" for="tempo">×1.00</output></div>
+    <label class="lbl" for="gravity">Sun mass</label>
+    <div class="ctl"><input id="gravity" type="range" min="50" max="200" value="100"><output id="gval" for="gravity">×1.00</output></div>
+    <label class="lbl" for="pull">Planet pull</label>
+    <div class="ctl"><input id="pull" type="checkbox"><span class="note">Planets tug on each other. Orbits drift into chaos.</span></div>
+  </section>
+
+  <button id="sound" class="primary waiting" type="button">Start sound</button>
+  <button id="pause" type="button">Pause</button>
+  <select id="preset" aria-label="Load a system">
+    <option value="" selected hidden>Systems</option>
+    <option value="twelve">Twelve-beat alignment</option>
+    <option value="galilean">Jupiter's moons</option>
+    <option value="trappist">TRAPPIST-1</option>
+    <option value="inner">Inner planets</option>
+    <option value="random">Random resonant chain</option>
+  </select>
+  <button id="clear" type="button">Clear</button>
+  <button id="tuneBtn" type="button" aria-expanded="false" aria-controls="tune">Tune</button>
+  <button id="logBtn" class="narrow-only" type="button" aria-expanded="false" aria-controls="log">Orbits</button>
+  <div class="hint">Drag to throw · tap empty sky for a circular orbit · tap a planet to remove it<span class="keys"> · <kbd>Space</kbd> pause <kbd>N</kbd> new <kbd>C</kbd> clear <kbd>M</kbd> mute <kbd>T</kbd> tune</span></div>
+</nav>
+
+<script>
+(() => {
+  const cv = document.getElementById('sky');
+  const ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = id => document.getElementById(id);
+
+  // ---- world constants (1 unit = smaller viewport dimension; 1 au = 0.2 units) ----
+  const GM0 = 0.033, SUN_R = 0.03, R_MIN = 0.07, R_MAX = 0.47, N = 15, BW = (R_MAX - R_MIN) / N, AU = 0.2;
+  const THROW = 2.2, MAX_PLANETS = 14, TRAIL = reduce ? 30 : 110, DT = 1 / 240, PULL = 0.012;
+  const NAMES = ['C','C♯','D','E♭','E','F','F♯','G','G♯','A','B♭','B'];
+  const GREEK = 'αβγδεζηθικλμνξοπρστυφχψω';
+  const noteName = m => NAMES[m % 12] + (Math.floor(m / 12) - 1);
+  const band = r => Math.max(0, Math.min(N - 1, Math.floor((R_MAX - r) / BW)));
+  const hue = i => (35 - (i / (N - 1)) * 135 + 360) % 360;   // amber (low) → rose → violet (high)
+  const col = (i, a = 1, l = 70) => `hsla(${hue(i)},72%,${l}%,${a})`;
+
+  const SCALES = {
+    minorPent: { label: 'D minor pentatonic', steps: [0, 3, 5, 7, 10] },
+    majorPent: { label: 'D major pentatonic', steps: [0, 2, 4, 7, 9] },
+    hirajoshi: { label: 'D hirajōshi', steps: [0, 2, 3, 7, 8] },
+    lydian:    { label: 'D lydian', steps: [0, 2, 4, 6, 7, 9, 11] },
+    wholeTone: { label: 'D whole tone', steps: [0, 2, 4, 6, 8, 10] },
+  };
+
+  // Real period ratios; radius follows from Kepler: r = r0 · ratio^(2/3)
+  const PRESETS = {
+    twelve: { name: 'Twelve-beat alignment', r0: 0.1,
+      text: 'Five planets with periods in the ratio 1 : 2 : 3 : 4 : 6. They line up on the meridian again every twelve beats.',
+      bodies: [['I', 1], ['II', 2], ['III', 3], ['IV', 4], ['V', 6]] },
+    galilean: { name: "Jupiter's moons", r0: 0.1,
+      text: 'Io, Europa and Ganymede are locked in a 1 : 2 : 4 Laplace resonance. Callisto runs free on the outside.',
+      bodies: [['Io', 1], ['Europa', 2.0073], ['Ganymede', 4.0447], ['Callisto', 9.434]] },
+    trappist: { name: 'TRAPPIST-1', r0: 0.08,
+      text: 'Seven Earth-sized worlds 40 light-years away, chained in resonances of 8:5, 5:3, 3:2, 3:2, 4:3 and 3:2.',
+      bodies: [['b', 1], ['c', 1.6029], ['d', 2.6802], ['e', 4.0371], ['f', 6.0935], ['g', 8.1758], ['h', 12.4211]] },
+    inner: { name: 'Inner planets', r0: AU * Math.pow(0.2408, 2 / 3),
+      text: 'Mercury, Venus, Earth and Mars at their true relative distances. Radius reads in real au here.',
+      bodies: [['Mercury', 1], ['Venus', 2.5548], ['Earth', 4.1528], ['Mars', 7.8108]] },
+  };
+
+  // ---- settings (scale, voice, meridians remembered per viewer) ----
+  const S0 = { scale: 'minorPent', voice: 'bell', meridians: 1 };
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('meridian-orrery') || '{}') || {}; } catch (_) {}
+  const settings = {
+    scale: SCALES[saved.scale] ? saved.scale : S0.scale,
+    voice: ['bell', 'marimba', 'glass'].includes(saved.voice) ? saved.voice : S0.voice,
+    meridians: [1, 2, 3, 4].includes(saved.meridians) ? saved.meridians : S0.meridians,
+    tempo: 1, gravity: 1, pull: false,
+  };
+  const persist = () => { try { localStorage.setItem('meridian-orrery', JSON.stringify({ scale: settings.scale, voice: settings.voice, meridians: settings.meridians })); } catch (_) {} };
+
+  let NOTES = [], ROOT = [];
+  function buildScale() {
+    const st = SCALES[settings.scale].steps, L = st.length;
+    NOTES = Array.from({ length: N }, (_, i) => 50 + Math.floor(i / L) * 12 + st[i % L]);
+    ROOT = Array.from({ length: N }, (_, i) => i % L === 0);
+  }
+  let MER = [];
+  function buildMeridians() {
+    MER = Array.from({ length: settings.meridians }, (_, k) => {
+      const a = -Math.PI / 2 + k * 2 * Math.PI / settings.meridians;
+      return { a, c: Math.cos(a), s: Math.sin(a) };
+    });
+  }
+  buildScale(); buildMeridians();
+
+  let W, H, S, cx, cy, simT = 0, sunPulse = 0, paused = false, thrown = 0;
+  let planets = [], ripples = [], beams = [], drag = null;
+  let conjCount = 0, wasAligned = false, lastConjReal = -9;
+  const stars = document.createElement('canvas');
+
+  // ---- layout ----
+  function resize() {
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    S = Math.min(W, Math.max(240, H - 160)) * 0.95;
+    cx = W / 2; cy = H / 2;
+    stars.width = W * dpr; stars.height = H * dpr;
+    const s = stars.getContext('2d'); s.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const g = s.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.7);
+    g.addColorStop(0, '#131c3a'); g.addColorStop(1, '#070b18');
+    s.fillStyle = g; s.fillRect(0, 0, W, H);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const n = Math.round(W * H * 0.00028);
+    for (let i = 0; i < n; i++) {
+      const a = 0.15 + rnd() * 0.6, warm = rnd() < 0.18;
+      s.fillStyle = warm ? `rgba(230,200,140,${a})` : `rgba(210,215,240,${a})`;
+      s.beginPath(); s.arc(rnd() * W, rnd() * H, 0.3 + rnd() * rnd() * 1.3, 0, 7); s.fill();
+    }
+  }
+  const toScreen = (x, y) => [cx + x * S, cy + y * S];
+  const toWorld = e => ({ x: (e.clientX - cx) / S, y: (e.clientY - cy) / S });
+  const sizeOf = i => 3 + ((N - 1 - i) / (N - 1)) * 4;
+
+  // ---- planets & systems ----
+  const GM = () => GM0 * settings.gravity;
+  function addPlanet(x, y, vx, vy, name) {
+    if (planets.length >= MAX_PLANETS) planets.shift();
+    if (!name) { name = 'Planet ' + GREEK[thrown % GREEK.length]; thrown++; }
+    planets.push({ name, x, y, vx, vy, trail: [], flash: 0, period: 0, last: {}, note: null });
+  }
+  function circular(x, y, name) {              // clockwise on screen
+    const r = Math.hypot(x, y), v = Math.sqrt(GM() / r);
+    addPlanet(x, y, (-y / r) * v, (x / r) * v, name);
+  }
+  function loadPreset(key) {
+    let p = PRESETS[key];
+    if (key === 'random') {
+      const pool = [4 / 3, 3 / 2, 5 / 3, 2, 5 / 2, 3, 4, 6, 8];
+      const r0 = 0.08 + Math.random() * 0.04;
+      const ok = pool.filter(q => r0 * Math.pow(q, 2 / 3) <= 0.44).sort(() => Math.random() - 0.5);
+      const qs = [1, ...ok.slice(0, 2 + Math.floor(Math.random() * 4))].sort((a, b) => a - b);
+      const fmt = q => Number.isInteger(q) ? String(q) : (q === 4 / 3 ? '4/3' : q === 3 / 2 ? '3/2' : q === 5 / 3 ? '5/3' : '5/2');
+      p = { name: 'Random resonant chain', r0, text: 'Period ratios ' + qs.map(fmt).join(' : ') + '. Press N for another.',
+        bodies: qs.map((q, i) => ['Chain ' + (i + 1), q]) };
+    }
+    planets = []; ripples = []; beams = []; wasAligned = false;
+    p.bodies.forEach(([name, q]) => circular(0, -p.r0 * Math.pow(q, 2 / 3), name)); // all start on the meridian
+    $('caption').innerHTML = `<b>${p.name}</b>${p.text}`;
+    renderLog();
+  }
+  function clearSky() {
+    planets = []; ripples = []; beams = []; wasAligned = false;
+    $('caption').innerHTML = '<b>Empty sky</b>Drag anywhere to throw a planet, or load a system.';
+    renderLog();
+  }
+
+  // ---- physics ----
+  function step(dt) {
+    const gm = GM();
+    if (settings.pull) {
+      const gp = gm * PULL;
+      for (let a = 0; a < planets.length; a++) for (let b = a + 1; b < planets.length; b++) {
+        const A = planets[a], B = planets[b], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy + 0.0004;
+        const f = gp / (d2 * Math.sqrt(d2)) * dt;
+        A.vx += dx * f; A.vy += dy * f; B.vx -= dx * f; B.vy -= dy * f;
+      }
+    }
+    for (const p of planets) {
+      const r2 = p.x * p.x + p.y * p.y, r = Math.sqrt(r2), a = gm / (r2 * r + 1e-7);
+      p.vx -= p.x * a * dt; p.vy -= p.y * a * dt;
+      const px = p.x, py = p.y;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      for (let k = 0; k < MER.length; k++) {
+        const m = MER[k], before = -px * m.s + py * m.c, after = -p.x * m.s + p.y * m.c;
+        if ((before < 0) !== (after < 0)) {
+          const along = p.x * m.c + p.y * m.s;
+          if (along > 0) chime(p, k, along, after > before ? 1 : -1);
+        }
+      }
+      if (r < SUN_R) p.dead = 'sun'; else if (r > 1.6) p.dead = 'lost';
+    }
+    if (planets.some(p => p.dead)) {
+      planets = planets.filter(p => { if (p.dead === 'sun') swallow(); return !p.dead; });
+    }
+    simT += dt;
+  }
+  function chime(p, k, r, dir) {
+    const i = band(r), m = MER[k];
+    p.flash = 1;
+    if (k === 0) {
+      p.note = i;
+      if (p.last[dir] != null) p.period = simT - p.last[dir];
+      p.last[dir] = simT;
+    }
+    ripples.push({ x: r * m.c, y: r * m.s, c: m.c, s: m.s, i, age: 0, kind: 'note' });
+    sunPulse = Math.min(1, sunPulse + 0.15);
+    const pan = k === 0 ? (i / (N - 1) - 0.5) * 0.9 : m.c * 0.8;
+    play(settings.voice, NOTES[i], pan, (0.16 + (N - 1 - i) / (N - 1) * 0.08) * (k === 0 ? 1 : 0.75));
+  }
+  function swallow() { ripples.push({ x: 0, y: 0, i: 0, age: 0, kind: 'sun' }); sunPulse = 1; thud(); }
+
+  // ---- conjunctions: 3+ planets (and most of the system) on one ray from the sun ----
+  function detectConjunction(now) {
+    const pts = [];
+    for (const p of planets) { const r = Math.hypot(p.x, p.y); if (r > 0.04 && r < 0.6) pts.push({ p, a: Math.atan2(p.y, p.x) }); }
+    pts.sort((u, v) => u.a - v.a);
+    const n = pts.length, WIN = 0.055;
+    let best = null;
+    if (n >= 3) {
+      const ext = pts.concat(pts.map(o => ({ p: o.p, a: o.a + 2 * Math.PI })));
+      let j = 0;
+      for (let i = 0; i < n; i++) {
+        if (j < i) j = i;
+        while (j + 1 < i + n && ext[j + 1].a - ext[i].a <= WIN) j++;
+        if (!best || j - i + 1 > best.c) best = { c: j - i + 1, list: ext.slice(i, j + 1) };
+      }
+    }
+    const need = Math.max(3, Math.ceil(planets.length * 0.6));
+    const aligned = !!best && best.c >= need;
+    if (aligned && !wasAligned && now - lastConjReal > 1.2) {
+      lastConjReal = now; conjCount++;
+      const a = best.list.reduce((s, o) => s + o.a, 0) / best.c;
+      beams.push({ a, members: best.list.map(o => o.p), age: 0, c: best.c });
+      const notes = [...new Set(best.list.map(o => NOTES[o.p.note ?? band(Math.hypot(o.p.x, o.p.y))]))].sort((x, y) => x - y);
+      notes.forEach((m, idx) => play('glass', m, (idx / Math.max(1, notes.length - 1) - 0.5) * 0.6, 0.07, idx * 0.045));
+      play('glass', 38, 0, 0.14);
+      $('conjCount').textContent = conjCount;
+    }
+    wasAligned = aligned;
+  }
+
+  // ---- audio ----
+  let AC = null, master, wet, muted = false;
+  const live = () => AC && !muted && AC.state === 'running';
+  function initAudio() {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = AC.createDynamicsCompressor();
+    master = AC.createGain(); master.gain.value = 0.55;
+    master.connect(comp); comp.connect(AC.destination);
+    const len = AC.sampleRate * 3.4, ir = AC.createBuffer(2, len, AC.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / len, 2.8); }
+    const conv = AC.createConvolver(); conv.buffer = ir;
+    wet = AC.createGain(); wet.gain.value = 0.5;
+    wet.connect(conv); conv.connect(master);
+  }
+  function out(node, pan, send = 1) {
+    let o = node;
+    if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = pan; node.connect(p); o = p; }
+    o.connect(master);
+    if (send === 1) o.connect(wet); else { const g = AC.createGain(); g.gain.value = send; o.connect(g); g.connect(wet); }
+  }
+  function osc(type, f, t, end) { const o = AC.createOscillator(); o.type = type; o.frequency.value = f; o.start(t); o.stop(end); return o; }
+  function play(kind, midi, pan, vel, when = 0) {
+    if (!live()) return;
+    const t = AC.currentTime + 0.005 + when, f = 440 * Math.pow(2, (midi - 69) / 12), low = (84 - midi) / 34;
+    const env = AC.createGain();
+    if (kind === 'bell') {
+      const dur = 1.1 + low * 2.4, car = osc('sine', f, t, t + dur + 0.05), mod = osc('sine', f * 3.5, t, t + dur + 0.05), mg = AC.createGain();
+      mg.gain.setValueAtTime(f * 2.2, t); mg.gain.exponentialRampToValueAtTime(f * 0.04, t + dur * 0.45);
+      mod.connect(mg); mg.connect(car.frequency); car.connect(env);
+      env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(vel, t + 0.006); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      out(env, pan);
+    } else if (kind === 'marimba') {
+      const dur = 0.45 + low * 0.9, car = osc('sine', f, t, t + dur + 0.05), mod = osc('sine', f * 4, t, t + dur + 0.05), mg = AC.createGain();
+      mg.gain.setValueAtTime(f * 1.4, t); mg.gain.exponentialRampToValueAtTime(f * 0.01, t + 0.1);
+      mod.connect(mg); mg.connect(car.frequency); car.connect(env);
+      env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(vel * 1.5, t + 0.003); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      out(env, pan, 0.45);
+    } else {
+      const dur = 2.4 + low * 2.2, a = osc('sine', f, t, t + dur + 0.05), b = osc('sine', f * 2.003, t, t + dur + 0.05), bg = AC.createGain();
+      bg.gain.value = 0.3; b.connect(bg); bg.connect(env); a.connect(env);
+      env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(vel * 0.9, t + 0.09); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      out(env, pan, 1.3);
+    }
+  }
+  function thud() {
+    if (!live()) return;
+    const t = AC.currentTime, o = osc('sine', 120, t, t + 1), g = AC.createGain();
+    o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(36, t + 0.6);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.45, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.connect(g); out(g, 0);
+  }
+  function pop(pan) {
+    if (!live()) return;
+    const t = AC.currentTime, o = osc('sine', 1400, t, t + 0.2), g = AC.createGain();
+    o.frequency.exponentialRampToValueAtTime(520, t + 0.12);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+    o.connect(g); out(g, pan, 0.4);
+  }
+
+  // ---- input ----
+  function hitPlanet(e) {
+    let best = null, bd = Infinity;
+    for (const p of planets) {
+      const [x, y] = toScreen(p.x, p.y), d = Math.hypot(x - e.clientX, y - e.clientY);
+      const i = p.note ?? band(Math.hypot(p.x, p.y));
+      if (d < Math.max(14, sizeOf(i) + 8) && d < bd) { bd = d; best = p; }
+    }
+    return best;
+  }
+  cv.addEventListener('pointerdown', e => {
+    const hit = hitPlanet(e);
+    if (hit) {
+      planets = planets.filter(p => p !== hit);
+      ripples.push({ x: hit.x, y: hit.y, i: hit.note ?? band(Math.hypot(hit.x, hit.y)), age: 0, kind: 'pop' });
+      pop(Math.max(-1, Math.min(1, hit.x * 2)));
+      renderLog();
+      return;
+    }
+    const p = toWorld(e);
+    if (Math.hypot(p.x, p.y) < SUN_R * 1.6) return;
+    cv.setPointerCapture(e.pointerId);
+    drag = { x: p.x, y: p.y, ex: p.x, ey: p.y };
+  });
+  cv.addEventListener('pointermove', e => {
+    if (drag) { const p = toWorld(e); drag.ex = p.x; drag.ey = p.y; }
+    else cv.style.cursor = hitPlanet(e) ? 'pointer' : 'crosshair';
+  });
+  cv.addEventListener('pointerup', () => {
+    if (!drag) return;
+    const dx = drag.ex - drag.x, dy = drag.ey - drag.y;
+    if (Math.hypot(dx, dy) < 0.015) circular(drag.x, drag.y);
+    else addPlanet(drag.x, drag.y, dx * THROW, dy * THROW);
+    drag = null; renderLog();
+  });
+  cv.addEventListener('pointercancel', () => { drag = null; });
+
+  // ---- controls ----
+  const soundBtn = $('sound');
+  async function toggleSound() {
+    if (!AC) initAudio();
+    if (AC.state !== 'running') { try { await AC.resume(); } catch (_) {} muted = false; }
+    else muted = !muted;
+    soundBtn.classList.remove('waiting', 'primary');
+    soundBtn.textContent = muted ? 'Unmute' : 'Mute';
+  }
+  soundBtn.addEventListener('click', toggleSound);
+  function togglePause() { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; }
+  $('pause').addEventListener('click', togglePause);
+  $('preset').addEventListener('change', e => { if (e.target.value) loadPreset(e.target.value); e.target.selectedIndex = 0; });
+  $('clear').addEventListener('click', clearSky);
+  function toggleTune() {
+    const t = $('tune'); t.hidden = !t.hidden; $('tuneBtn').setAttribute('aria-expanded', String(!t.hidden));
+  }
+  $('tuneBtn').addEventListener('click', toggleTune);
+  $('logBtn').addEventListener('click', () => {
+    const open = $('log').classList.toggle('open'); $('logBtn').setAttribute('aria-expanded', String(open));
+  });
+
+  const scaleSel = $('scale');
+  scaleSel.innerHTML = Object.entries(SCALES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  scaleSel.value = settings.scale;
+  scaleSel.addEventListener('change', () => {
+    settings.scale = scaleSel.value; buildScale(); persist();
+    NOTES.slice(0, 6).reverse().forEach((m, idx) => play(settings.voice, m + 12, 0, 0.12, idx * 0.11)); // preview run
+  });
+  function segment(id, key, parse, onChange) {
+    const g = $(id);
+    const sync = () => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(parse(b.dataset.v) === settings[key])));
+    g.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      settings[key] = parse(b.dataset.v); sync(); persist(); onChange && onChange();
+    });
+    sync();
+  }
+  segment('voice', 'voice', v => v, () => play(settings.voice, NOTES[9], 0, 0.18));
+  segment('meridians', 'meridians', v => Number(v), buildMeridians);
+  const slider = (id, outId, key) => $(id).addEventListener('input', () => { settings[key] = $(id).value / 100; $(outId).textContent = '×' + settings[key].toFixed(2); });
+  slider('tempo', 'tval', 'tempo'); slider('gravity', 'gval', 'gravity');
+  $('pull').addEventListener('change', e => { settings.pull = e.target.checked; });
+
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input,select,textarea')) return;
+    const k = e.key.toLowerCase();
+    if (k === ' ') { if (e.target.closest('button')) return; e.preventDefault(); togglePause(); }
+    else if (k === 'n') loadPreset('random');
+    else if (k === 'c') clearSky();
+    else if (k === 'm') toggleSound();
+    else if (k === 't') toggleTune();
+  });
+
+  // ---- drawing ----
+  function drawInstrument() {
+    const labelsAll = BW * S >= 15;
+    ctx.lineWidth = 1;
+    for (let k = 0; k <= N; k++) {
+      const r = (R_MAX - k * BW) * S, root = k < N && ROOT[k];
+      ctx.strokeStyle = root ? 'rgba(212,176,106,.13)' : 'rgba(212,176,106,.05)';
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+    }
+    MER.forEach((m, k) => {
+      const r0 = SUN_R * S * 1.4, r1 = R_MAX * S + 10;
+      ctx.strokeStyle = k === 0 ? 'rgba(212,176,106,.45)' : 'rgba(212,176,106,.22)';
+      ctx.beginPath(); ctx.moveTo(cx + m.c * r0, cy + m.s * r0); ctx.lineTo(cx + m.c * r1, cy + m.s * r1); ctx.stroke();
+    });
+    const top = cy - R_MAX * S - 10;
+    ctx.font = '500 9.5px "IBM Plex Mono", ui-monospace, monospace';
+    ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(212,176,106,.8)';
+    ctx.fillText('M E R I D I A N', cx, top - 8);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < N; i++) {
+      if (!labelsAll && !ROOT[i]) continue;
+      ctx.fillStyle = ROOT[i] ? 'rgba(212,176,106,.75)' : 'rgba(154,150,179,.55)';
+      ctx.fillText(noteName(NOTES[i]), cx - 7, cy - (R_MAX - (i + 0.5) * BW) * S);
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+  function drawSun() {
+    const r = SUN_R * S, glow = r * (3.2 + sunPulse * 1.6);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, glow);
+    g.addColorStop(0, 'rgba(255,240,205,1)');
+    g.addColorStop(0.22, 'rgba(250,206,120,.85)');
+    g.addColorStop(0.5, 'rgba(230,150,70,.18)');
+    g.addColorStop(1, 'rgba(230,150,70,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, glow, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff4dc'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, 0, 7); ctx.fill();
+  }
+  const LIFE = { note: 1.1, sun: 1.4, pop: 0.6 };
+  function drawRipples(dt) {
+    for (const rp of ripples) rp.age += dt;
+    ripples = ripples.filter(r => r.age < LIFE[r.kind]);
+    for (const rp of ripples) {
+      const [x, y] = toScreen(rp.x, rp.y), t = rp.age / LIFE[rp.kind];
+      if (rp.kind === 'note') {
+        const half = BW * S * 0.5;
+        ctx.strokeStyle = col(rp.i, (1 - t) * 0.9, 78); ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(x - rp.c * half, y - rp.s * half); ctx.lineTo(x + rp.c * half, y + rp.s * half); ctx.stroke();
+        if (reduce) continue;
+      }
+      if (reduce) continue;
+      const rad = rp.kind === 'sun' ? SUN_R * S * (1 + t * 7) : rp.kind === 'pop' ? 6 + t * 22 : 4 + t * 34;
+      ctx.strokeStyle = rp.kind === 'sun' ? `rgba(255,220,160,${(1 - t) * 0.6})` : col(rp.i, (1 - t) * 0.75);
+      ctx.lineWidth = 1.5 * (1 - t) + 0.5;
+      if (rp.kind === 'pop') ctx.setLineDash([2, 4]);
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, 7); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  function drawBeams(dt) {
+    for (const b of beams) b.age += dt;
+    beams = beams.filter(b => b.age < 2.6);
+    for (const b of beams) {
+      const t = b.age / 2.6, a = 1 - t, c = Math.cos(b.a), s = Math.sin(b.a), len = R_MAX * S + 26;
+      const ex = cx + c * len, ey = cy + s * len;
+      const g = ctx.createLinearGradient(cx, cy, ex, ey);
+      g.addColorStop(0, `rgba(255,236,190,${0.9 * a})`); g.addColorStop(1, 'rgba(212,176,106,0)');
+      ctx.strokeStyle = g; ctx.lineWidth = 12; ctx.globalAlpha = 0.18;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+      for (const p of b.members) {
+        const [x, y] = toScreen(p.x, p.y);
+        ctx.strokeStyle = `rgba(255,236,190,${0.7 * a})`; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y, 11 + t * 8, 0, 7); ctx.stroke();
+      }
+      ctx.font = '500 9.5px "IBM Plex Mono", ui-monospace, monospace';
+      ctx.fillStyle = `rgba(236,227,207,${a})`;
+      ctx.textAlign = Math.abs(c) < 0.3 ? 'center' : c > 0 ? 'left' : 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`CONJUNCTION · ${b.c} BODIES`, ex + c * 10, ey + s * 12);
+      ctx.textBaseline = 'alphabetic';
+    }
+  }
+  function drawPlanets(dt) {
+    for (const p of planets) {
+      if (!paused) { p.trail.push(p.x, p.y); if (p.trail.length > TRAIL * 2) p.trail.splice(0, 2); }
+      const i = p.note ?? band(Math.hypot(p.x, p.y)), tr = p.trail, n = tr.length / 2;
+      ctx.lineWidth = 1.4; ctx.strokeStyle = col(i, 1);
+      for (let k = 1; k < n; k++) {
+        ctx.globalAlpha = (k / n) * 0.55;
+        const [x0, y0] = toScreen(tr[2 * k - 2], tr[2 * k - 1]), [x1, y1] = toScreen(tr[2 * k], tr[2 * k + 1]);
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const [x, y] = toScreen(p.x, p.y), size = sizeOf(i), halo = size * (3 + p.flash * 3);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, halo);
+      g.addColorStop(0, col(i, 0.55 + p.flash * 0.35)); g.addColorStop(1, col(i, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, halo, 0, 7); ctx.fill();
+      ctx.fillStyle = col(i, 1, 78 + p.flash * 14); ctx.beginPath(); ctx.arc(x, y, size, 0, 7); ctx.fill();
+      p.flash = Math.max(0, p.flash - dt * 2.2);
+    }
+  }
+  function noteTag(x, y, i) {
+    const txt = noteName(NOTES[i]);
+    ctx.font = '500 11px "IBM Plex Mono", ui-monospace, monospace';
+    const w = ctx.measureText(txt).width + 12;
+    ctx.fillStyle = 'rgba(10,16,34,.85)'; ctx.strokeStyle = col(i, 0.9);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 9, y - 10, w, 20, 10) : ctx.rect(x + 9, y - 10, w, 20); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = col(i, 1, 82); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(txt, x + 15, y + 0.5); ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = col(i, 1, 82); ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+  }
+  function drawAim() {
+    if (!drag) return;
+    const [sx, sy] = toScreen(drag.x, drag.y), [ex, ey] = toScreen(drag.ex, drag.ey);
+    const dx = drag.ex - drag.x, dy = drag.ey - drag.y;
+    ctx.fillStyle = 'rgba(236,227,207,.9)'; ctx.beginPath(); ctx.arc(sx, sy, 4, 0, 7); ctx.fill();
+    if (Math.hypot(dx, dy) < 0.015) {
+      const r = Math.hypot(drag.x, drag.y);
+      ctx.setLineDash([2, 6]); ctx.strokeStyle = 'rgba(236,227,207,.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, r * S, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      noteTag(cx, cy - r * S, band(r));
+      return;
+    }
+    ctx.strokeStyle = 'rgba(236,227,207,.6)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+    let x = drag.x, y = drag.y, vx = dx * THROW, vy = dy * THROW, tag = null; const gm = GM(), h = 1 / 120;
+    ctx.fillStyle = 'rgba(212,176,106,.55)';
+    for (let k = 0; k < 900; k++) {
+      const r2 = x * x + y * y, r = Math.sqrt(r2), a = gm / (r2 * r + 1e-7), px = x;
+      vx -= x * a * h; vy -= y * a * h; x += vx * h; y += vy * h;
+      if (!tag && (px < 0) !== (x < 0) && y < 0) tag = { y: -y };
+      if (r < SUN_R || r > 1.4) break;
+      if (k % 5 === 0) { const [qx, qy] = toScreen(x, y); ctx.globalAlpha = 1 - k / 900; ctx.beginPath(); ctx.arc(qx, qy, 1.1, 0, 7); ctx.fill(); }
+    }
+    ctx.globalAlpha = 1;
+    if (tag) noteTag(cx, cy - tag.y * S, band(tag.y));
+  }
+
+  // ---- orbit log ----
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function renderLog() {
+    const list = planets.map(p => ({ p, r: Math.hypot(p.x, p.y) })).sort((a, b) => a.r - b.r);
+    $('rows').innerHTML = list.length ? list.map(({ p, r }) => {
+      const i = p.note ?? band(r);
+      return `<tr><td title="${esc(p.name)}"><span class="dot" style="background:${col(i)}"></span>${esc(p.name)}</td><td>${noteName(NOTES[i])}</td><td>${p.period ? (p.period / settings.tempo).toFixed(2) + ' s' : '…'}</td><td>${(r / AU).toFixed(2)} au</td></tr>`;
+    }).join('') : '<tr><td colspan="4" class="empty">The sky is empty. Drag anywhere to throw a planet.</td></tr>';
+    $('count').textContent = planets.length;
+  }
+
+  // ---- loop ----
+  let last = performance.now(), acc = 0, logT = 0;
+  function frame(now) {
+    const d = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!paused) {
+      acc += d * settings.tempo;
+      while (acc >= DT) { step(DT); acc -= DT; }
+      detectConjunction(now / 1000);
+    } else acc = 0;
+    sunPulse = Math.max(0, sunPulse - d * 1.5);
+    ctx.drawImage(stars, 0, 0, W, H);
+    drawInstrument(); drawBeams(d); drawRipples(d); drawSun(); drawPlanets(d); drawAim();
+    if ((logT += d) > 0.25) { logT = 0; renderLog(); }
+    requestAnimationFrame(frame);
+  }
+
+  addEventListener('resize', resize);
+  resize();
+  loadPreset('twelve');
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
