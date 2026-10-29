@@ -166,6 +166,9 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
 <section class="drawer" id="tune" aria-label="Tune" hidden>
   <header class="drawer-head"><h2>Tune</h2><button type="button" class="close" id="tuneClose" aria-label="Close Tune">×</button></header>
 
+  <h3>Throw</h3>
+  <div class="row"><span class="lbl">Throw</span><div class="ctl"><div class="seg" id="throwKind" role="group" aria-label="What a throw makes"><button type="button" data-v="planet">Planet</button><button type="button" data-v="comet">Comet</button></div><span class="note">Comets are icy and weightless. Tap far from the sun for a long, stretched orbit. Shift-drag always throws a comet.</span></div></div>
+
   <h3>Sound</h3>
   <div class="row"><label class="lbl" for="scale">Scale</label><div class="ctl"><select id="scale"></select></div></div>
   <div class="row"><span class="lbl">Voice</span><div class="ctl"><div class="seg" id="voice" role="group" aria-label="Voice"><button type="button" data-v="bell">Bell</button><button type="button" data-v="marimba">Marimba</button><button type="button" data-v="glass">Glass</button></div></div></div>
@@ -195,7 +198,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     <h2 id="helpTitle">How to play</h2>
     <dl>
       <dt>Listen</dt><dd>Press <b>Start sound</b>. Each planet rings a note as it crosses the brass meridian line above the sun. Closer orbits ring higher, and since closer planets also move faster, every system plays its own rhythm.</dd>
-      <dt>Play</dt><dd>Drag anywhere to throw a planet. The dotted line shows where it will go and the note it will play. Tap empty sky to drop one into a circular orbit.</dd>
+      <dt>Play</dt><dd>Drag anywhere to throw a planet. The dotted line shows where it will go and the note it will play. Tap empty sky to drop one into a circular orbit. To launch comets instead, set Throw to Comet in Tune, or hold Shift while you drag.</dd>
       <dt>Choose</dt><dd>Tap a planet to choose it. You can then give it moons, ride along on it, or remove it. Lagrange points and strings follow the chosen planet.</dd>
       <dt>Explore</dt><dd><b>Systems</b> loads real and historic setups, each with a short story. <b>Tune</b> changes the sound, the gravity, what's drawn over the sky and the camera.</dd>
       <dt>Keys</dt><dd><kbd>Space</kbd> pause · <kbd>N</kbd> new · <kbd>C</kbd> clear · <kbd>M</kbd> mute · <kbd>T</kbd> tune · <kbd>?</kbd> help. Mode keys are listed in Tune.</dd>
@@ -235,6 +238,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       <option value="trojans">Jupiter's Trojans</option>
       <option value="venus">Dance of Venus</option>
       <option value="ptolemy">Ptolemy's sky</option>
+      <option value="comets">Comets</option>
     </optgroup>
   </select>
   <button id="clear" type="button">Clear</button>
@@ -256,6 +260,8 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const GM0 = 0.033, SUN_R = 0.03, R_MIN = 0.07, R_MAX = 0.47, N = 15, BW = (R_MAX - R_MIN) / N, AU = 0.2;
   // Moons sit at these fractions of their planet's Hill radius (the edge of its gravitational reach)
   const MOON_SLOTS = [0.25, 0.33, 0.42], MAX_MOONS = 24, MOON_SOFT2 = 1e-12, MOON_PX = 28, MOON_MIN_T = 0.125, ROMAN = ['I', 'II', 'III'];
+  // Comets: massless, on stretched orbits, with their own finer time steps near the sun
+  const MAX_COMETS = 8, COMET_MAX_SUB = 48, COMET_TURN = 0.015, COMET_ACTIVE = 0.12, MAX_DUST = 240;
   const STRING_DT = 0.05, MAX_STRINGS = 2400;   // strings: one set of lines every 0.05 s of orbit time
   const MAX_AST = 48, AST_TRAIL = reduce ? 120 : 700, ROUTH = 0.0385;   // L4/L5 are stable only below this mass ratio (Routh, 1875)
   const THROW = 2.2, MAX_PLANETS = 14, TRAIL = reduce ? 30 : 110, TRAIL_LONG = reduce ? 400 : 2000, DT = 1 / 240, SOFT2 = 0.0004;
@@ -313,6 +319,11 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     text: "Earth's Moon sits a quarter of the way to the edge of Earth's gravitational reach, as the real one does, so a month here is about a thirteenth of a year, as it is for us. Jupiter's Io, Europa and Ganymede start in their 1 : 2 : 4 rhythm. Moons chime an octave above their planet at every full moon.",
     ellipses: [['Earth', 0.22, 0, -90, 3.00e-6], ['Jupiter', 0.38, 0, 90, JUPITER]],
     moons: { Earth: [['Moon', 0.257]], Jupiter: [['Io', 0.16], ['Europa', 0.254], ['Ganymede', 0.403]] } };
+  PRESETS.comets = { name: 'Comets', view: 'fixed', mass: 1,
+    text: 'Halley goes round the Sun the opposite way to the planets, as the real one does. Encke has the shortest orbit of any known comet. The sungrazer dives almost to the Sun. Tails point away from the Sun, and each comet strums the rings as it falls in: a rising run of notes, then a falling one.',
+    ellipses: [['Earth', 0.2, 0.0167, -90, 3.00e-6], ['Jupiter', 0.36, 0.048, 90, JUPITER]],
+    // [name, farthest distance, eccentricity, starting angle, direction (1 like the planets, −1 backwards)]
+    comets: [['Halley', 0.62, 0.85, 180, -1], ['Encke', 0.3, 0.7, 20, 1], ['Sungrazer', 0.5, 0.866, -120, 1]] };
   PRESETS.ptolemy = { ...PRESETS.inner, name: "Ptolemy's sky", view: 'centred', focus: 'Earth',
     bodies: PRESETS.inner.bodies.filter(b => b[0] !== 'Mercury'),   // Mercury loops three times a year and would fill the middle
     text: 'The camera rides on Earth without turning, the way ancient astronomers saw the sky. The Sun circles us once a year. Venus traces a five-petal rose over 8 years, and Mars loops backwards each time Earth overtakes it. Ptolemy explained those loops with circles on circles.' };
@@ -325,7 +336,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     voice: ['bell', 'marimba', 'glass'].includes(saved.voice) ? saved.voice : 'bell',
     meridians: [1, 2, 3, 4].includes(saved.meridians) ? saved.meridians : 1,
     mass: [0, 1, 10, 100].includes(saved.mass) ? saved.mass : 1,
-    tempo: 1, gravity: 1, einstein: 0, kepler: false, view: 'fixed', lagrange: false, strings: false,
+    tempo: 1, gravity: 1, einstein: 0, kepler: false, view: 'fixed', lagrange: false, strings: false, throwKind: 'planet',
   };
   let lastEinstein = 2;
   // 1/c² chosen so a circular orbit at 1 au turns EINSTEIN_DEG per lap: Δφ = 6πGM / (c² a (1−e²))
@@ -347,7 +358,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   }
   buildScale(); buildMeridians();
 
-  let lastAst = -1, focus = null, lastFrameId = null, nextId = 1, strings = [], lastString = 0, lastRows = '';
+  let lastAst = -1, cometN = 0, focus = null, lastFrameId = null, nextId = 1, strings = [], lastString = 0, lastRows = '';
   let W, H, S, cx, cy, SX = 0, SY = 0, phi = 0, simT = 0, sunPulse = 0, paused = false, thrown = 0, dirty = true;
   let planets = [], ripples = [], beams = [], drag = null;
   let conjCount = 0, wasAligned = false, lastConjReal = -9;
@@ -360,7 +371,9 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const massOf = p => p.m0 * GM0 * settings.mass;          // a planet
   const rel = p => [p.x - sun.x, p.y - sun.y];
   const relR = p => Math.hypot(p.x - sun.x, p.y - sun.y);
-  const isPlanet = p => !p.ast && !p.moon;
+  const isPlanet = p => !p.ast && !p.moon && !p.comet;
+  const COMET_COL = 'hsl(205,85%,82%)';
+  const colorOf = p => p.comet ? COMET_COL : col(p.note ?? band(relR(p)));
   function com() {
     let M = GM(), x = M * sun.x, y = M * sun.y, vx = M * sun.vx, vy = M * sun.vy;
     for (const p of planets) { const m = massOf(p); M += m; x += m * p.x; y += m * p.y; vx += m * p.vx; vy += m * p.vy; }
@@ -471,6 +484,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     centreOnMass();
     if (p.swarms) for (const [k, n] of Object.entries(p.swarms)) dropSwarm(k, n);
     if (p.focus) focus = planets.find(q => q.name === p.focus) || null;
+    if (p.comets) p.comets.forEach(([n, Q, e, deg, dir]) => cometOrbit(n, Q, e, deg, dir));
     if (p.moons) for (const [h, list] of Object.entries(p.moons)) {
       const H = planets.find(q => q.name === h); if (H) list.forEach(([n, f]) => addMoon(H, n, f));
     }
@@ -511,14 +525,16 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   }
   function step(dt) {
     if (dirty) { accel(); dirty = false; }
-    const h = dt / 2, all = [sun, ...planets];
+    const h = dt / 2, all = [sun, ...planets.filter(p => !p.comet)];   // comets take their own finer steps below
     for (const b of all) { b.vx += b.ax * h; b.vy += b.ay * h; }
     for (const p of planets) { p.px = p.x - sun.x; p.py = p.y - sun.y; }
-    for (const b of all) { b.x += b.vx * dt; b.y += b.vy * dt; }
+    for (const b of all) { b.ox = b.x; b.oy = b.y; b.x += b.vx * dt; b.y += b.vy * dt; }
     accel();
     for (const b of all) { b.vx += b.ax * h; b.vy += b.ay * h; }
+    for (const p of planets) if (p.comet) cometStep(p, dt);
     for (const p of planets) {
       if (p.moon) { moonStep(p); continue; }
+      if (p.comet) continue;
       const [rx, ry] = rel(p), r = Math.hypot(rx, ry);
       for (let k = 0; k < MER.length; k++) {
         const m = MER[k], before = -p.px * m.s + p.py * m.c, after = -rx * m.s + ry * m.c;
@@ -634,7 +650,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     if (strings.length > MAX_STRINGS) strings.splice(0, strings.length - MAX_STRINGS);
   }
   function lagrange() {   // positions relative to the sun
-    const F = framePlanet(); if (!F || !settings.mass) return null;
+    const F = framePlanet(); if (!F || !settings.mass || !massOf(F)) return null;
     const rx = F.x - sun.x, ry = F.y - sun.y, r = Math.hypot(rx, ry), ux = rx / r, uy = ry / r;
     const m = massOf(F), mu = m / (GM() + m), h = Math.cbrt(mu / 3);          // h: Hill radius / r
     const dir = Math.sign(rx * (F.vy - sun.vy) - ry * (F.vx - sun.vx)) || 1;  // +1 = clockwise on screen
@@ -663,6 +679,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const moonMag = H => { const rH = hillOf(H); return rH ? Math.max(1, MOON_PX / (0.42 * rH * S)) : 1; };
   function moonReason(H, f) {   // why this planet can't take this moon, or ''
     if (!settings.mass) return 'Planets are weightless right now, so they cannot hold moons. Set Planet mass to Real in Tune.';
+    if (!massOf(H)) return `${H.name} is too small to hold a moon.`;
     if (planets.filter(q => q.moon).length >= MAX_MOONS) return 'The sky already has 24 moons. Remove some first.';
     if (f == null) return `${H.name} already has three moons.`;
     const r = relR(H), Tp = 2 * Math.PI * Math.sqrt(r * r * r / GM());
@@ -702,6 +719,73 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     const H = p.host, i = H.note ?? band(relR(H)), ms = moonsOf(H), j = Math.min(N - 1, i + ms.length - 1 - ms.indexOf(p));
     play(settings.voice, NOTES[j] + 12, Math.max(-1, Math.min(1, (H.x - sun.x) * 2)), 0.07);   // an octave up; inner moons higher
   }
+  // ---- comets ----
+  function addComet(x, y, vx, vy, name) {
+    const cs = planets.filter(p => p.comet);
+    if (cs.length >= MAX_COMETS) planets.splice(planets.indexOf(cs[0]), 1);
+    if (!name) { cometN++; name = 'Comet ' + cometN; }
+    planets.push({ id: nextId++, name, comet: true, m0: 0, x, y, vx, vy, ax: 0, ay: 0, trail: [], dust: [], flash: 0,
+      ice: 1, passes: 0, q: null, rmin: 9, vr0: 0, ring: null, lastStrum: -1, note: null, peri: [], wedges: [], last: {} });
+  }
+  function cometOrbit(name, Q, e, deg, dir = 1) {   // start at the farthest point, Q from the sun
+    const t = deg * Math.PI / 180, a = Q / (1 + e), v = Math.sqrt(GM() / a * (1 - e) / (1 + e)) * dir;
+    addComet(sun.x + Q * Math.cos(t), sun.y + Q * Math.sin(t), sun.vx - Math.sin(t) * v, sun.vy + Math.cos(t) * v, name);
+  }
+  function cometAt(x, y) {   // a tap in comet mode: start here at the far end of a stretched orbit
+    const rx = x - sun.x, ry = y - sun.y, Q = Math.hypot(rx, ry);
+    const q = Math.min(Q * 0.6, Math.max(0.05, Q * 0.15)), e = (Q - q) / (Q + q);
+    cometOrbit(null, Q, e, Math.atan2(ry, rx) * 180 / Math.PI, 1);
+  }
+  const ringOf = r => Math.floor((R_MAX - r) / BW);   // which ring band, unclamped: −1 is outside the instrument
+  function cometAccel(c, f) {   // sun and planets at fraction f of the way through this step
+    const sx = sun.ox + f * (sun.x - sun.ox), sy = sun.oy + f * (sun.y - sun.oy), Ms = GM(), ic2 = invC2();
+    const dx = c.x - sx, dy = c.y - sy, r2 = dx * dx + dy * dy;
+    let inv = 1 / (r2 * Math.sqrt(r2) + 1e-9);
+    if (ic2) { const L = dx * (c.vy - sun.vy) - dy * (c.vx - sun.vx); inv *= 1 + 3 * L * L * ic2 / r2; }
+    let ax = -Ms * dx * inv, ay = -Ms * dy * inv;
+    if (settings.mass) for (const P of planets) {
+      if (!isPlanet(P)) continue;
+      const m = massOf(P), px = P.ox + f * (P.x - P.ox), py = P.oy + f * (P.y - P.oy);
+      const ex = px - c.x, ey = py - c.y, d2 = ex * ex + ey * ey + SOFT2, g = m / (d2 * Math.sqrt(d2));
+      ax += ex * g; ay += ey * g;
+    }
+    return [ax, ay];
+  }
+  function cometStep(c, dt) {
+    let rx = c.x - sun.ox, ry = c.y - sun.oy, r = Math.hypot(rx, ry);
+    const w = Math.abs(rx * (c.vy - sun.vy) - ry * (c.vx - sun.vx)) / (r * r);   // how fast it is turning around the sun
+    const n = Math.min(COMET_MAX_SUB, Math.max(1, Math.ceil(w * dt / COMET_TURN))), h = dt / n;
+    for (let k = 0; k < n; k++) {   // drift-kick-drift with the field at the middle of each sub-step
+      c.x += c.vx * h / 2; c.y += c.vy * h / 2;
+      const [ax, ay] = cometAccel(c, (k + 0.5) / n);
+      c.vx += ax * h; c.vy += ay * h;
+      c.x += c.vx * h / 2; c.y += c.vy * h / 2;
+      const f = (k + 1) / n, sx = sun.ox + f * (sun.x - sun.ox), sy = sun.oy + f * (sun.y - sun.oy);
+      rx = c.x - sx; ry = c.y - sy; r = Math.hypot(rx, ry);
+      const ring = ringOf(r);
+      if (c.ring != null && ring !== c.ring) strum(c, ring, ring > c.ring, rx);
+      c.ring = ring;
+      c.rmin = Math.min(c.rmin, r);
+      const vr = rx * (c.vx - sun.vx) + ry * (c.vy - sun.vy);
+      if (c.vr0 < 0 && vr >= 0) cometPerihelion(c);
+      c.vr0 = vr;
+      if (r < SUN_R) { c.dead = 'sun'; ripples.push({ x: rx, y: ry, i: 0, age: 0, kind: 'sun' }); sunPulse = 1; return; }
+    }
+    if (r > 2.2) c.dead = 'lost';
+  }
+  function strum(c, ring, inward, rx) {   // a comet crossing a ring plays that ring's note
+    const b = inward ? ring : ring + 1;   // the band it has just entered (inward) or just left (outward)
+    if (b < 0 || b >= N) return;
+    c.note = b; c.flash = Math.max(c.flash, 0.6);
+    if (!live() || AC.currentTime - c.lastStrum < 0.025) return;
+    c.lastStrum = AC.currentTime;
+    play('harp', NOTES[b] + 12, Math.max(-1, Math.min(1, rx * 2)), 0.05 * (0.35 + 0.65 * c.ice));
+  }
+  function cometPerihelion(c) {   // each pass near the sun boils off some ice
+    c.q = c.rmin; c.rmin = 9; c.passes++;
+    if (c.q < 0.25) c.ice *= c.q < 0.06 ? 0.97 : 0.985;   // sped up: real comets lose a tiny fraction per pass
+  }
+  const activity = c => c.ice * Math.min(1, Math.pow(COMET_ACTIVE / Math.max(relR(c), 0.01), 1.5));
   function camps(L, asts) {   // how many asteroids sit within ~35° and 20% of L4 and L5
     const out = { L4: 0, L5: 0 };
     for (const key of ['L4', 'L5']) {
@@ -781,6 +865,11 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       mod.connect(mg); mg.connect(car.frequency); car.connect(env);
       env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(vel * 1.5, t + 0.003); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       out(env, pan, 0.45);
+    } else if (kind === 'harp') {
+      const dur = 0.5 + low * 0.7, a = osc('triangle', f, t, t + dur + 0.05), b = osc('sine', f * 2.004, t, t + dur + 0.05), bg = AC.createGain();
+      bg.gain.value = 0.25; b.connect(bg); bg.connect(env); a.connect(env);
+      env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(vel, t + 0.004); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      out(env, pan, 0.8);
     } else if (kind === 'tick') {
       const o = osc('triangle', f, t, t + 0.08);
       o.connect(env);
@@ -812,7 +901,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   function hitPlanet(e) {
     let best = null, bd = Infinity;
     for (const p of planets) {
-      if (!isPlanet(p)) continue;
+      if (!isPlanet(p) && !p.comet) continue;
       const [x, y] = screenOf(p.x, p.y), d = Math.hypot(x - e.clientX, y - e.clientY);
       const i = p.note ?? band(relR(p));
       if (d < Math.max(18, sizeOf(i) + 10) && d < bd) { bd = d; best = p; }
@@ -840,7 +929,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     const p = toWorld(e);
     if (Math.hypot(p.x - sun.x, p.y - sun.y) < SUN_R * 1.6) return;
     cv.setPointerCapture(e.pointerId);
-    drag = { x: p.x, y: p.y, ex: p.x, ey: p.y };
+    drag = { x: p.x, y: p.y, ex: p.x, ey: p.y, comet: e.shiftKey || settings.throwKind === 'comet' };
   });
   cv.addEventListener('pointermove', e => {
     if (drag) { const p = toWorld(e); drag.ex = p.x; drag.ey = p.y; }
@@ -849,7 +938,10 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   cv.addEventListener('pointerup', () => {
     if (!drag) return;
     const dx = drag.ex - drag.x, dy = drag.ey - drag.y;
-    if (Math.hypot(dx, dy) < 0.015) circular(drag.x, drag.y);
+    if (drag.comet) {
+      if (Math.hypot(dx, dy) < 0.015) cometAt(drag.x, drag.y);
+      else addComet(drag.x, drag.y, sun.vx + dx * THROW, sun.vy + dy * THROW);
+    } else if (Math.hypot(dx, dy) < 0.015) circular(drag.x, drag.y);
     else addPlanet(drag.x, drag.y, sun.vx + dx * THROW, sun.vy + dy * THROW);
     drag = null; renderLog();
   });
@@ -895,13 +987,13 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     if (bar.hidden === on) bar.hidden = !on;
     if (on) {
       $('chosenName').textContent = focus.name;
-      $('chosenDot').style.background = col(focus.note ?? band(relR(focus)));
+      $('chosenDot').style.background = colorOf(focus);
       $('chRide').setAttribute('aria-pressed', String(settings.view === 'centred'));
       $('chRide').textContent = settings.view === 'centred' ? 'Riding along' : 'Ride along';
     }
     $('chosenLine').innerHTML = on ? `Chosen: <b>${esc(focus.name)}</b>. Tap it again to let go.`
       : FP ? `Tap a planet to choose it. Until then, modes use the heaviest: <b>${esc(FP.name)}</b>.` : '';
-    const n = (settings.einstein ? 1 : 0) + settings.kepler + settings.lagrange + settings.strings + (settings.view !== 'fixed') + (settings.mass !== 1);
+    const n = (settings.throwKind === 'comet') + (settings.einstein ? 1 : 0) + settings.kepler + settings.lagrange + settings.strings + (settings.view !== 'fixed') + (settings.mass !== 1);
     const b = $('tuneBadge'); b.hidden = !n; b.textContent = n;
     $('tuneBtn').setAttribute('aria-label', n ? `Tune, ${n} setting${n > 1 ? 's' : ''} changed` : 'Tune');
   }
@@ -948,6 +1040,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const stringsChanged = () => { strings = []; lastString = simT; };
   const syncStrings = segment('strings', 'strings', v => v === '1', stringsChanged);
   function setStrings(v) { settings.strings = v; syncStrings(); stringsChanged(); }
+  segment('throwKind', 'throwKind', v => v);
   const VIEWS = ['fixed', 'rotating', 'centred'];
   let toastTimer = 0;
   function toast(msg) {
@@ -1158,6 +1251,12 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     const longT = settings.einstein || settings.view !== 'fixed' ? TRAIL_LONG : TRAIL;
     for (const p of planets) {
       if (p.moon) continue;   // moons draw their own enlarged trails
+      if (p.comet) {   // a faint, long path
+        if (!paused) p.trail.push(...viewPoint(p.x, p.y));
+        if (p.trail.length > TRAIL_LONG * 2) p.trail.splice(0, p.trail.length - TRAIL_LONG * 2);
+        strokeTrail(p.trail, 1, 'rgba(170,205,245,1)', 0.45);
+        continue;
+      }
       const maxT = p.ast ? AST_TRAIL : longT;
       if (!paused && (!p.ast || (p.tk = (p.tk || 0) + 1) % 2 === 0)) p.trail.push(...viewPoint(p.x, p.y));
       if (p.trail.length > maxT * 2) p.trail.splice(0, p.trail.length - maxT * 2);
@@ -1189,9 +1288,52 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       ctx.stroke();
     }
   }
+  function drawComets(dt) {
+    const ds = paused ? 0 : dt * settings.tempo, Ms = GM();
+    for (const c of planets) {
+      if (!c.comet) continue;
+      const rx = c.x - sun.x, ry = c.y - sun.y, r = Math.hypot(rx, ry), ux = rx / r, uy = ry / r, act = activity(c);
+      // dust: grains leave the nucleus and are pushed outward by sunlight, so the dust tail curves behind
+      if (ds) {
+        const emit = Math.floor(5 * act + Math.random());   // about five grains a frame at full activity
+        for (let k = 0; k < emit; k++) {
+          const beta = 0.3 + Math.random() * 0.9, sp = 0.01 + Math.random() * 0.02;
+          c.dust.push({ x: c.x, y: c.y, vx: c.vx + ux * sp * act + (Math.random() - 0.5) * 0.01, vy: c.vy + uy * sp * act + (Math.random() - 0.5) * 0.01, beta, age: 0 });
+        }
+        for (const g of c.dust) {   // gravity weakened by radiation pressure: (1 − β) GM / r²
+          const gx = g.x - sun.x, gy = g.y - sun.y, g2 = gx * gx + gy * gy, k = (1 - g.beta) * Ms / (g2 * Math.sqrt(g2) + 1e-9);
+          g.vx -= gx * k * ds; g.vy -= gy * k * ds; g.x += g.vx * ds; g.y += g.vy * ds; g.age += ds;
+        }
+        c.dust = c.dust.filter(g => g.age < 2.4);
+        if (c.dust.length > MAX_DUST) c.dust.splice(0, c.dust.length - MAX_DUST);
+      }
+      for (const g of c.dust) {
+        const [x, y] = toCanvas(g.x, g.y);
+        ctx.fillStyle = `rgba(255,232,190,${(1 - g.age / 2.4) * 0.55})`;
+        ctx.fillRect(x - 0.6, y - 0.6, 1.3, 1.3);
+      }
+      const [x, y] = toCanvas(c.x, c.y);
+      if (act > 0.02) {
+        // ion tail: straight, blue, pointing directly away from the sun
+        const L = S * (0.03 + 0.2 * act), wd = 1 + 3 * act, ex = x + ux * L, ey = y + uy * L;
+        const g = ctx.createLinearGradient(x, y, ex, ey);
+        g.addColorStop(0, `rgba(160,205,255,${0.75 * act + 0.1})`); g.addColorStop(1, 'rgba(160,205,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(x - uy * wd, y + ux * wd); ctx.lineTo(ex, ey); ctx.lineTo(x + uy * wd, y - ux * wd); ctx.closePath(); ctx.fill();
+        // coma
+        const cr = 4 + 14 * act, cg = ctx.createRadialGradient(x, y, 0, x, y, cr);
+        cg.addColorStop(0, `rgba(190,220,255,${0.45 * act + 0.1})`); cg.addColorStop(1, 'rgba(190,220,255,0)');
+        ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(x, y, cr, 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = c.ice > 0.05 ? '#eef5ff' : 'rgba(170,175,190,.9)';   // a spent comet is a dark lump
+      ctx.beginPath(); ctx.arc(x, y, 2.2 + c.flash, 0, 7); ctx.fill();
+      c.flash = Math.max(0, c.flash - dt * 3);
+    }
+  }
   function drawBodies(dt) {
+    drawComets(dt);
     for (const p of planets) {
-      if (p.moon) continue;
+      if (p.moon || p.comet) continue;
       if (p.ast) {
         const [x, y] = toCanvas(p.x, p.y);
         ctx.fillStyle = `rgba(236,227,207,${0.7 + p.flash * 0.3})`;
@@ -1280,7 +1422,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
     // predicted path relative to the sun (the sun's own wobble is too small to matter here)
     let x = drag.x - sun.x, y = drag.y - sun.y, vx = dx * THROW, vy = dy * THROW, tag = null; const gm = GM(), ic2 = invC2(), h = 1 / 120;
-    ctx.fillStyle = 'rgba(212,176,106,.55)';
+    ctx.fillStyle = drag.comet ? 'rgba(160,205,255,.7)' : 'rgba(212,176,106,.55)';
     for (let k = 0; k < 900; k++) {
       const r2 = x * x + y * y, r = Math.sqrt(r2), L = x * vy - y * vx, a = gm / (r2 * r + 1e-7) * (1 + 3 * L * L * ic2 / r2), px = x;
       vx -= x * a * h; vy -= y * a * h; x += vx * h; y += vy * h;
@@ -1337,12 +1479,19 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       const last = settings.kepler ? (spread == null ? '…' : '±' + spread.toFixed(spread < 1 ? 2 : 1) + '%') : settings.einstein ? (p.shift == null ? '…' : (p.shift >= 0 ? '+' : '') + p.shift.toFixed(1) + '°') : (r / AU).toFixed(2) + ' au';
       return `<tr><td><button type="button" class="pick" data-id="${p.id}" aria-pressed="${p === FP}" title="${esc(p.name)}"><span class="dot" style="background:${col(i)}"></span>${esc(p.name)}</button></td><td>${noteName(NOTES[i])}</td><td>${T ? (T / settings.tempo).toFixed(2) + ' s' : 'leaving'}</td><td>${last}</td><td>${moonsOf(p).length || ''}</td></tr>` + moonRows(p);
     }).join('') : '<tr><td colspan="5" class="empty">The sky is empty. Drag anywhere to throw a planet.</td></tr>';
-    if (html !== lastRows) { $('rows').innerHTML = html; lastRows = html; }
-    $('count').textContent = list.length;
+    const comets = planets.filter(p => p.comet).map(c => {
+      const T = orbitalPeriod(c), r = relR(c), state = c.ice > 0.05 ? `ice ${Math.round(c.ice * 100)}%` : 'spent';
+      const closest = c.q != null ? ` · closest ${(c.q / AU).toFixed(2)} au` : '';
+      return `<tr><td><button type="button" class="pick" data-id="${c.id}" aria-pressed="${c === FP}" title="${esc(c.name)}"><span class="dot" style="background:${COMET_COL}"></span>${esc(c.name)}</button></td><td>${c.note != null ? noteName(NOTES[c.note] + 12) : '…'}</td><td>${T ? (T / settings.tempo).toFixed(2) + ' s' : 'leaving'}</td><td>${(r / AU).toFixed(2)} au</td><td></td></tr>`
+        + `<tr class="sub"><td colspan="5">${state}${closest} · ${c.passes} pass${c.passes === 1 ? '' : 'es'}</td></tr>`;
+    }).join('');
+    const all = (list.length ? html : '') + comets || html;
+    if (all !== lastRows) { $('rows').innerHTML = all; lastRows = all; }
+    $('count').textContent = list.length + planets.filter(p => p.comet).length;
     const L = settings.lagrange ? lagrange() : null, lag = $('lagLine');
     lag.hidden = !settings.lagrange;
     if (L) lag.innerHTML = `Lagrange points of ${esc(L.F.name)}: the star outweighs it <strong>${Math.round((1 - L.mu) / L.mu).toLocaleString('en-US')} : 1</strong>, so L4 and L5 are <strong>${L.mu < ROUTH ? 'stable' : 'unstable'}</strong>. They need about 25 : 1.`;
-    else if (settings.lagrange) lag.textContent = settings.mass ? 'Add a planet to see its Lagrange points.' : 'Planets are weightless, so there are no Lagrange points.';
+    else if (settings.lagrange) lag.textContent = !settings.mass ? 'Planets are weightless, so there are no Lagrange points.' : FP && !massOf(FP) ? `${FP.name} has no mass, so it has no Lagrange points.` : 'Add a planet to see its Lagrange points.';
     const asts = planets.filter(p => p.ast), al = $('astLine');
     al.hidden = !asts.length;
     if (asts.length) {
