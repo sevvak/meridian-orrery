@@ -21,7 +21,9 @@ We build one step at a time. Each step is one release: it ships on GitHub Pages,
 
 - [x] **4. Lagrange points and Trojans.** L1–L5 marked for the heaviest planet, tap-to-drop asteroid swarms, a rotating view, a live stability readout and the Jupiter's Trojans preset. Asteroids at L4/L5 trace tadpoles. Horseshoes were left out: they are only stable around planets about 30× lighter, where they would take many minutes to trace.
 - [x] **5. Planetary roses.** Choose any planet from the orbit log; a From planet view that rides on it (the geocentric sky, with retrograde loops); a Strings mode whose lines weave roses; and the Dance of Venus and Ptolemy's sky presets.
-- [ ] **6. Moons.** Planets carry moons that chime an octave higher.
+- [x] **6. Moons.** Up to three moons per planet, chiming an octave up at every full moon, drawn enlarged, with the Moons of Earth and Jupiter preset.
+
+**Interface pass (with step 6):** tapping a planet chooses it instead of removing it, with an action bar (Add moon, Ride along, Remove); Tune became a grouped drawer and a bottom sheet on phones; a How to play card; grouped Systems menu; orbit periods shown at once; moons listed in the orbit log.
 
 ## Milestone C — A wilder sky
 

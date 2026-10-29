@@ -8,17 +8,19 @@ It is a single `index.html` file with no build step and no dependencies beyond t
 
 - **Drag** anywhere to throw a planet. A dotted line predicts its path and shows the note it will play.
 - **Tap** empty sky to drop a planet into a perfect circular orbit.
-- **Tap a planet** to remove it.
+- **Tap a planet** to choose it. A dashed ring and its name appear, and a bar offers **Add moon**, **Ride along** and **Remove**. Tap it again, or press Esc, to let go.
+- Press **?** for a short How to play card.
 - When most of the planets line up on one ray from the sun, a **conjunction** fires a beam through them and plays a chord.
 
 ## Systems
 
-Each preset uses real period ratios, so you hear its actual rhythm.
+The Systems menu is grouped into rhythms, real systems and lessons. Each preset uses real period ratios, so you hear its actual rhythm.
 
 | System | What you hear |
 | --- | --- |
 | Twelve-beat alignment | Periods 1 : 2 : 3 : 4 : 6. All five line up again every twelve beats. |
-| Jupiter's moons | Io, Europa and Ganymede in their 1 : 2 : 4 Laplace resonance, with Callisto running free. |
+| Jupiter's moons, up close | Io, Europa and Ganymede in their 1 : 2 : 4 Laplace resonance, with Callisto running free, with Jupiter in the middle. |
+| Moons of Earth and Jupiter | Earth with its Moon and Jupiter with Io, Europa and Ganymede, all going round the Sun. Moons chime an octave above their planet at every full moon. |
 | TRAPPIST-1 | Seven Earth-sized planets chained in resonances of 8:5, 5:3, 3:2, 3:2, 4:3 and 3:2. |
 | Inner planets | Mercury to Mars at their true relative distances, read in au. |
 | Einstein's rosettes | Three eccentric orbits with relativity turned up. Each ellipse slowly turns, so its meridian note walks through the scale. |
@@ -28,7 +30,9 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 | Ptolemy's sky | Venus, Earth and Mars seen from Earth. The Sun circles us, Venus traces its five-petal rose, and Mars loops backwards. |
 | Random resonant chain | A new set of simple period ratios each time. |
 
-## Tune panel
+## Tune
+
+Tune opens as a drawer (a bottom sheet on phones), grouped into Sound, Gravity, Overlays and Camera. The Tune button shows how many settings differ from the defaults.
 
 - **Scale**: D minor pentatonic, major pentatonic, hirajōshi, lydian or whole tone
 - **Voice**: Bell (FM synthesis), Marimba or Glass
@@ -37,11 +41,11 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 - **Planet mass**: None (weightless), Real (true mass ratios), ×10 or ×100. Heavier planets tug on each other and on the sun, and resonant systems drift into chaos.
 - **Einstein**: Off, 3°, 10° or 30° of perihelion turn per orbit at 1 au. See below.
 - **Kepler**: shows equal-time wedges and a ticking 30° dial. See below.
-- **View**: Fixed; Rotating, where the camera turns with the chosen planet so it stays at the top; or From planet, where the camera rides on it without turning.
+- **View**: Fixed; Turning, where the camera turns with the chosen planet so it stays at the top; or From planet, where the camera rides on it without turning. **Ride along** on the chosen-planet bar switches to From planet.
 - **Lagrange**: marks the five Lagrange points of the chosen planet. See below.
 - **Strings**: draws faint lines from the chosen planet to its neighbours. See below.
 
-**Choosing a planet:** click a planet's name in the orbit log, or press F to step through them. The view, Lagrange points and strings all follow it. Until you choose, the heaviest planet is used.
+**Choosing a planet:** tap it in the sky, click its name in the orbit log, or press F to step through them. The view, Lagrange points and strings all follow it. Until you choose, the heaviest planet is used, and the orbit log says which.
 
 ## Einstein mode
 
@@ -79,6 +83,16 @@ Two old ways of drawing the solar system, both of which turn orbits into flowers
 - **Strings.** Every 0.05 s of orbit time, a faint line joins the chosen planet to its nearest neighbours. Venus goes round the Sun 13 times while Earth goes round 8, so every 8 years the pair line up in the same five places, and the lines weave a five-petal rose. Try it in **Dance of Venus**. The meetings measured in the simulation land about 144° apart, which traces a pentagram.
 - **From planet.** The camera rides on a planet without turning, which is how the sky looks from Earth. The Sun circles once a year, and other planets appear to stop and loop backwards whenever one overtakes the other. Ancient astronomers saw these retrograde loops, and Ptolemy explained them with circles on circles. In **Ptolemy's sky**, Venus loops backwards 5 times in 8 years, tracing its rose, and Mars loops about every 2 years. Measured in the simulation over 8 Earth years: Venus 5.0, Mars 3.5 and Mercury 25.5 loops, against about 5, 3.7 and 25 from their real orbital periods. Mercury is left out of the preset because its loops fill the middle; add it yourself to see.
 
+## Moons
+
+Choose a planet and press **Add moon** (or press O). A planet holds up to three.
+
+- A moon has to stay well inside the region its planet controls, its Hill radius, or the sun pulls it away. Moons start at a quarter to two fifths of that radius. Earth's real Moon sits at about a quarter.
+- That region is only a few pixels wide on screen, so moon orbits are drawn enlarged around their planet, like the Sun wobble plot. The orbit log says by how much for each planet.
+- Moons chime an octave above their planet at every full moon, when the sun, the planet and the moon line up. Inner moons ring higher.
+- In **Moons of Earth and Jupiter**, the simulation gives 12.2 full moons per Earth year (the real figure is 12.4), and Io, Europa and Ganymede keep close to their 1 : 2 : 4 rhythm.
+- Planets close to the sun orbit too fast for the simulation's 240 steps per second to follow a moon, so they refuse one and say why. Moons also leave if planets become weightless or a planet passes too close.
+
 ## Keyboard
 
 | Key | Action |
@@ -93,6 +107,10 @@ Two old ways of drawing the solar system, both of which turn orbits into flowers
 | S | Strings on / off |
 | V | Next view: fixed, rotating, from planet |
 | F | Choose the next planet |
+| O | Add a moon to the chosen planet |
+| Delete | Remove the chosen planet |
+| Esc | Close the top panel, or let go of the chosen planet |
+| ? | How to play |
 | T | Open the tune panel |
 
 ## How it works
@@ -103,6 +121,7 @@ Two old ways of drawing the solar system, both of which turn orbits into flowers
 - Einstein mode adds the first post-Newtonian correction to the sun's pull, F = GMm/r² · (1 + 3L²/(c²r²)), where L is the planet's angular momentum per unit mass. The speed of light c is set so a circular orbit at 1 au turns by the chosen angle per lap. Circular orbits placed with a tap get the slightly higher speed this extra pull needs, so they stay circular.
 - The rotating view turns the canvas so the chosen planet stays at the top; the from-planet view moves the camera onto it. Trails are stored as they looked when drawn, so they show paths in the rotating frame, which is where tadpoles appear. Text stays level.
 - Strings keep the last 2,400 lines, drawn in a few dozen strokes grouped by colour and age so they cost little to draw.
+- Moons are massless and feel their planet with full-strength gravity (planets soften each other's pull at very close range to avoid wild kicks). Orbital periods in the log come from each orbit's energy, so they show at once.
 - A chime fires when a planet's position changes sign relative to a meridian ray. The note comes from the planet's distance at that moment, mapped onto 15 bands of the chosen scale.
 - Sound is pure Web Audio: FM bells, a generated reverb impulse, stereo panning by pitch, and a compressor on the master bus. Asteroids play quiet glass notes an octave up, so a swarm crossing the meridian sounds like a strum.
 

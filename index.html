@@ -10,7 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: full-bleed night sky on canvas; title card top-left, orbit log top-right, instrument controls and a fold-out tuning panel along the bottom edge. Single dark look by choice (an astrolabe at night). */
+/* Layout: full-bleed night sky on canvas; title card top-left, orbit log top-right, instrument controls along the bottom edge,
+   a Tune drawer on the left (a bottom sheet on phones) and a How to play card. Single dark look by choice (an astrolabe at night). */
 :root{
   --ink:#0a1022;
   --ink-raised:rgba(15,22,44,.84);
@@ -36,7 +37,8 @@ body{margin:0;background:var(--ink);color:var(--parchment);font-family:var(--mon
 @media (max-width:520px){.title .lede{display:none}.title .system{font-size:11px}}
 
 .log{position:fixed;top:calc(env(safe-area-inset-top,0px) + 20px);right:calc(env(safe-area-inset-right,0px) + 20px);width:300px;max-height:calc(100% - 200px);overflow:auto;background:var(--ink-raised);border:1px solid var(--brass-soft);border-radius:3px;padding:12px 14px 10px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2}
-.log h2{margin:0 0 8px;font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--brass);display:flex;justify-content:space-between}
+.log h2{margin:0 0 8px;font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--brass);display:flex;justify-content:space-between;align-items:center;min-height:16px}
+.log h2 #count{color:var(--parchment);margin-left:6px}
 .log table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .log th{font:400 10px/1 var(--mono);color:var(--muted);text-align:left;padding:4px 0 6px;letter-spacing:.06em}
 .log th:not(:first-child),.log td:not(:first-child){text-align:right}
@@ -47,6 +49,11 @@ body{margin:0;background:var(--ink);color:var(--parchment);font-family:var(--mon
 .log .pick:hover{color:var(--brass)}
 .log .pick[aria-pressed="true"]{color:var(--brass);text-decoration:underline;text-underline-offset:3px}
 .log .pick:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.log tr.sub td{color:var(--muted);font-size:11px;padding-top:1px}
+.log tr.sub td:first-child{padding-left:14px}
+.log .chosenLine{margin:8px 0 0;color:var(--muted);font-size:10.5px;line-height:1.55}
+.log .chosenLine b{color:var(--brass);font-weight:500}
+.toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 16px);left:50%;transform:translateX(-50%);max-width:min(420px,calc(100vw - 32px));background:var(--ink-solid);border:1px solid var(--brass);border-radius:6px;padding:10px 14px;font-size:12px;line-height:1.5;color:var(--parchment);z-index:5;box-shadow:0 6px 24px rgba(0,0,0,.4)}
 .log .empty{color:var(--muted);text-align:left!important;padding:6px 0;line-height:1.5;white-space:normal}
 .wobble{display:flex;gap:12px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--brass-soft)}
 .wobble canvas{width:84px;height:84px;flex:none;border:1px solid var(--brass-soft);border-radius:50%;background:rgba(7,11,24,.6)}
@@ -57,7 +64,7 @@ body{margin:0;background:var(--ink);color:var(--parchment);font-family:var(--mon
 .log footer strong{color:var(--brass);font-weight:500;font-variant-numeric:tabular-nums}
 .narrow-only{display:none}
 @media (max-width:720px){
-  .log{display:none;left:calc(env(safe-area-inset-left,0px) + 16px);right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 16px);width:auto;max-height:50%}
+  .log{display:none;left:calc(env(safe-area-inset-left,0px) + 12px);right:calc(env(safe-area-inset-right,0px) + 12px);top:calc(env(safe-area-inset-top,0px) + 12px);width:auto;max-height:55%;z-index:4}
   .log.open{display:block}
   .narrow-only{display:inline-block}
 }
@@ -77,18 +84,49 @@ button[aria-expanded="true"]{border-color:var(--brass);color:var(--brass)}
 .hint kbd{font:inherit;color:var(--parchment);border:1px solid var(--brass-soft);border-radius:3px;padding:0 4px}
 @media (max-width:720px){.hint .keys{display:none}}
 
-.tune{flex-basis:100%;max-width:460px;max-height:min(60vh,560px);overflow:auto;background:var(--ink-raised);border:1px solid var(--brass-soft);border-radius:6px;padding:14px 16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px 12px;align-items:center}
-.tune .lbl{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
-.tune .lbl kbd{font:inherit;letter-spacing:0;color:var(--parchment);border:1px solid var(--brass-soft);border-radius:3px;padding:0 4px;margin-left:5px}
-.tune .ctl{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
-.tune select{border-radius:4px;padding:8px 30px 8px 10px;width:100%}
+/* Tune drawer: a panel on the left; a bottom sheet on phones */
+.drawer{position:fixed;left:calc(env(safe-area-inset-left,0px) + 20px);top:calc(env(safe-area-inset-top,0px) + 20px);bottom:calc(env(safe-area-inset-bottom,0px) + 104px);width:380px;max-width:calc(100vw - 40px);overflow:auto;overscroll-behavior:contain;background:var(--ink-solid);border:1px solid var(--brass-soft);border-radius:8px;padding:0 18px 16px;z-index:5;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.drawer-head{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:14px 0 6px;background:var(--ink-solid)}
+.drawer h2{margin:0;font-family:var(--display);font-style:italic;font-weight:600;font-size:26px;line-height:1}
+.drawer h3{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--brass-soft);font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--brass)}
+.drawer h3:first-of-type{border-top:0;padding-top:4px}
+.row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:4px 12px;align-items:start;padding:6px 0}
+.row .lbl{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding-top:9px;display:flex;align-items:center;gap:5px}
+.row .lbl kbd,.drawer-foot kbd,.help kbd,.hint kbd{font:inherit;letter-spacing:0;color:var(--parchment);border:1px solid var(--brass-soft);border-radius:3px;padding:0 4px}
+.row .ctl{display:flex;align-items:center;gap:8px 10px;min-width:0;flex-wrap:wrap;min-height:32px}
+.row select{border-radius:4px;padding:8px 30px 8px 10px;width:100%}
+.row .note{flex-basis:100%;color:var(--muted);font-size:11px;line-height:1.5}
+.drawer-foot{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--brass-soft);color:var(--muted);font-size:11px;line-height:1.7}
+@media (max-width:720px){
+  .drawer{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;max-height:74%;border-radius:14px 14px 0 0;padding:0 max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 18px) max(16px,env(safe-area-inset-left,0px))}
+}
+button.close{width:30px;height:30px;padding:0;border-radius:50%;display:inline-grid;place-items:center;font-size:16px;line-height:1}
+.badge{display:inline-block;min-width:16px;height:16px;margin-left:7px;padding:0 4px;border-radius:8px;background:var(--brass);color:var(--ink);font-size:10px;line-height:16px;text-align:center;vertical-align:1px}
+/* the chosen planet's action bar */
+.chosen-wrap{flex-basis:100%;display:flex;justify-content:center}
+.chosen{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;max-width:100%;background:var(--ink-raised);border:1px solid var(--brass);border-radius:22px;padding:5px 5px 5px 14px}
+.chosen-name{display:inline-flex;align-items:center;gap:7px;margin-right:6px;font-size:12px}
+.chosen-name .dot{width:8px;height:8px;border-radius:50%}
+.chosen-name b{font-weight:500;color:var(--parchment)}
+.chosen button{padding:7px 12px}
+.chosen button[aria-pressed="true"]{background:var(--brass);color:var(--ink);border-color:var(--brass)}
+@media (max-width:480px){.chosen{gap:4px;padding:4px 4px 4px 10px;flex-wrap:nowrap}.chosen-name{margin-right:2px;font-size:11px;min-width:0}.chosen-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:64px}.chosen button{padding:6px 8px;font-size:11px;letter-spacing:0;white-space:nowrap}.chosen button.close{width:26px;height:26px;flex:none}}
+/* How to play */
+.help{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:rgba(5,8,18,.6);z-index:6}
+.help-card{width:100%;max-width:540px;max-height:100%;overflow:auto;background:var(--ink-solid);border:1px solid var(--brass-soft);border-radius:10px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.help h2{margin:0 0 14px;font-family:var(--display);font-style:italic;font-weight:600;font-size:32px;line-height:1}
+.help dl{margin:0;display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px 14px}
+.help dt{font:500 10px/1.9 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--brass)}
+.help dd{margin:0;font-size:12.5px;line-height:1.65;color:var(--parchment)}
+.help a{color:var(--brass)}
+.help-foot{margin:16px 0 18px;color:var(--muted);font-size:11.5px;line-height:1.6}
+@media (max-width:480px){.help dl{grid-template-columns:1fr;gap:2px}.help dd{margin-bottom:10px}}
 .seg{display:inline-flex;border:1px solid var(--brass-soft);border-radius:999px;overflow:hidden}
 .seg button{border:0;border-radius:0;background:transparent;padding:7px 12px}
 .seg button + button{border-left:1px solid var(--brass-soft)}
 .seg button[aria-pressed="true"]{background:var(--brass);color:var(--ink)}
 input[type=range]{accent-color:var(--brass);flex:1;min-width:90px}
 output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font-size:12px}
-.tune .note{color:var(--muted);font-size:11px;line-height:1.5;flex-basis:100%}
 @media (prefers-reduced-motion:reduce){button.primary.waiting{animation:none}}
 </style>
 <style>
@@ -97,20 +135,21 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
 </style>
 </head>
 <body>
-<canvas id="sky" aria-label="Orrery. Drag to throw a planet, tap empty sky to place one in a circular orbit, tap a planet to remove it."></canvas>
+<canvas id="sky" aria-label="Orrery. Drag to throw a planet, tap empty sky to place one in a circular orbit, tap a planet to choose it."></canvas>
 
 <header class="title">
   <h1>Meridian Orrery</h1>
-  <p class="lede">Every planet chimes as it crosses the meridian. Closer orbits ring higher.</p>
+  <p class="lede">Each planet rings a note as it crosses the brass meridian line. Closer orbits ring higher.</p>
   <p class="system" id="caption"></p>
 </header>
 
-<aside class="log" id="log">
-  <h2><span>Orbits</span><span id="count">0</span></h2>
+<aside class="log" id="log" aria-label="Orbit log">
+  <h2><span>Orbits<span id="count">0</span></span><button type="button" class="close narrow-only" id="logClose" aria-label="Close the orbit log">×</button></h2>
   <table>
-    <thead><tr><th>Body</th><th>Note</th><th>Period</th><th id="col4">Radius</th></tr></thead>
+    <thead><tr><th>Body</th><th>Note</th><th>Period</th><th id="col4">Radius</th><th>Moons</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
+  <p class="chosenLine" id="chosenLine"></p>
   <div class="wobble">
     <canvas id="wobble" aria-label="Path of the sun around the system's centre of mass"></canvas>
     <div><b>Sun wobble</b><span id="wobbleText"></span></div>
@@ -118,75 +157,91 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   <footer>
     <span id="lagLine" hidden></span>
     <span id="astLine" hidden></span>
-    <span>Click a planet's name to choose it for the view, Lagrange points and strings.</span>
+    <span id="moonLine" hidden></span>
     <span>Conjunctions seen: <strong id="conjCount">0</strong></span>
     <span>Period² ∝ radius³. Kepler's third law sets the rhythm.</span>
   </footer>
 </aside>
 
-<nav class="controls">
-  <section class="tune" id="tune" aria-label="Tuning" hidden>
-    <label class="lbl" for="scale">Scale</label>
-    <div class="ctl"><select id="scale"></select></div>
-    <span class="lbl">Voice</span>
-    <div class="ctl"><div class="seg" id="voice" role="group" aria-label="Voice"><button type="button" data-v="bell">Bell</button><button type="button" data-v="marimba">Marimba</button><button type="button" data-v="glass">Glass</button></div></div>
-    <span class="lbl">Meridians</span>
-    <div class="ctl"><div class="seg" id="meridians" role="group" aria-label="Meridians"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button><button type="button" data-v="4">4</button></div></div>
-    <label class="lbl" for="tempo">Tempo</label>
-    <div class="ctl"><input id="tempo" type="range" min="50" max="200" value="100"><output id="tval" for="tempo">×1.00</output></div>
-    <label class="lbl" for="gravity">Sun mass</label>
-    <div class="ctl"><input id="gravity" type="range" min="50" max="200" value="100"><output id="gval" for="gravity">×1.00</output></div>
-    <span class="lbl">Planet mass</span>
-    <div class="ctl">
-      <div class="seg" id="mass" role="group" aria-label="Planet mass"><button type="button" data-v="0">None</button><button type="button" data-v="1">Real</button><button type="button" data-v="10">×10</button><button type="button" data-v="100">×100</button></div>
-      <span class="note">Real uses true mass ratios. Heavier planets tug on each other and on the sun, and resonant systems drift into chaos.</span>
-    </div>
-    <span class="lbl">Einstein<kbd>E</kbd></span>
-    <div class="ctl">
-      <div class="seg" id="einstein" role="group" aria-label="Relativity strength"><button type="button" data-v="0">Off</button><button type="button" data-v="1">3°</button><button type="button" data-v="2">10°</button><button type="button" data-v="3">30°</button></div>
-      <span class="note">General relativity turns every orbit a little each lap. Values are the turn per orbit at 1 au. Earth's real turn is 0.04″, so even 3° is about 300,000 times stronger than reality.</span>
-    </div>
-    <span class="lbl">Kepler<kbd>K</kbd></span>
-    <div class="ctl">
-      <div class="seg" id="kepler" role="group" aria-label="Kepler wedges"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div>
-      <span class="note">Each shaded wedge takes the same time, and Kepler's second law says each has the same area. Ticks mark every 30° of the dial, so they rush together near the sun.</span>
-    </div>
-    <span class="lbl">View<kbd>V</kbd></span>
-    <div class="ctl">
-      <div class="seg" id="view" role="group" aria-label="View"><button type="button" data-v="fixed">Fixed</button><button type="button" data-v="rotating">Rotating</button><button type="button" data-v="centred">From planet</button></div>
-      <span class="note">Rotating turns the camera with the chosen planet so it stays at the top. From planet rides along on it without turning, the way we see the sky from Earth. Choose the planet by clicking its name in the orbit log; the heaviest is used until you do. F steps through them.</span>
-    </div>
-    <span class="lbl">Lagrange<kbd>L</kbd></span>
-    <div class="ctl">
-      <div class="seg" id="lagrange" role="group" aria-label="Lagrange points"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div>
-      <span class="note">Marks the five balance points of the chosen planet. Tap one to drop a swarm of asteroids there.</span>
-    </div>
-    <span class="lbl">Strings<kbd>S</kbd></span>
-    <div class="ctl">
-      <div class="seg" id="strings" role="group" aria-label="Strings"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div>
-      <span class="note">Every moment, a faint line joins the chosen planet to its neighbours. Over many orbits the lines weave a rose.</span>
-    </div>
-  </section>
+<section class="drawer" id="tune" aria-label="Tune" hidden>
+  <header class="drawer-head"><h2>Tune</h2><button type="button" class="close" id="tuneClose" aria-label="Close Tune">×</button></header>
 
+  <h3>Sound</h3>
+  <div class="row"><label class="lbl" for="scale">Scale</label><div class="ctl"><select id="scale"></select></div></div>
+  <div class="row"><span class="lbl">Voice</span><div class="ctl"><div class="seg" id="voice" role="group" aria-label="Voice"><button type="button" data-v="bell">Bell</button><button type="button" data-v="marimba">Marimba</button><button type="button" data-v="glass">Glass</button></div></div></div>
+  <div class="row"><span class="lbl">Meridians</span><div class="ctl"><div class="seg" id="meridians" role="group" aria-label="Meridians"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button><button type="button" data-v="4">4</button></div><span class="note">Lines where planets chime. More lines, more notes per orbit.</span></div></div>
+  <div class="row"><label class="lbl" for="tempo">Tempo</label><div class="ctl"><input id="tempo" type="range" min="50" max="200" value="100"><output id="tval" for="tempo">×1.00</output></div></div>
+
+  <h3>Gravity</h3>
+  <div class="row"><label class="lbl" for="gravity">Sun mass</label><div class="ctl"><input id="gravity" type="range" min="50" max="200" value="100"><output id="gval" for="gravity">×1.00</output></div></div>
+  <div class="row"><span class="lbl">Planet mass</span><div class="ctl"><div class="seg" id="mass" role="group" aria-label="Planet mass"><button type="button" data-v="0">None</button><button type="button" data-v="1">Real</button><button type="button" data-v="10">×10</button><button type="button" data-v="100">×100</button></div><span class="note">Real uses true mass ratios. Heavier planets pull each other off course.</span></div></div>
+  <div class="row"><span class="lbl">Einstein<kbd>E</kbd></span><div class="ctl"><div class="seg" id="einstein" role="group" aria-label="Relativity strength"><button type="button" data-v="0">Off</button><button type="button" data-v="1">3°</button><button type="button" data-v="2">10°</button><button type="button" data-v="3">30°</button></div><span class="note">Relativity makes each orbit slowly turn. Values are the turn per orbit at 1 au; Earth's real turn is 0.04″.</span></div></div>
+
+  <h3>Overlays</h3>
+  <div class="row"><span class="lbl">Kepler<kbd>K</kbd></span><div class="ctl"><div class="seg" id="kepler" role="group" aria-label="Kepler wedges"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div><span class="note">Equal-time wedges have equal areas. Ticks speed up near the sun.</span></div></div>
+  <div class="row"><span class="lbl">Lagrange<kbd>L</kbd></span><div class="ctl"><div class="seg" id="lagrange" role="group" aria-label="Lagrange points"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div><span class="note">The chosen planet's five balance points. Tap one to drop asteroids.</span></div></div>
+  <div class="row"><span class="lbl">Strings<kbd>S</kbd></span><div class="ctl"><div class="seg" id="strings" role="group" aria-label="Strings"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div><span class="note">Lines from the chosen planet to its neighbours weave a rose.</span></div></div>
+
+  <h3>Camera</h3>
+  <div class="row"><span class="lbl">View<kbd>V</kbd></span><div class="ctl"><div class="seg" id="view" role="group" aria-label="View"><button type="button" data-v="fixed">Fixed</button><button type="button" data-v="rotating">Turning</button><button type="button" data-v="centred">From planet</button></div><span class="note">Turning keeps the chosen planet at the top. From planet rides on it, the way we see the sky from Earth.</span></div></div>
+
+  <p class="drawer-foot">Tap a planet to choose it. Until you do, the heaviest one is used.<br><kbd>F</kbd> next planet · <kbd>O</kbd> add a moon · <kbd>Delete</kbd> remove the chosen planet</p>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<div class="help" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+  <div class="help-card">
+    <h2 id="helpTitle">How to play</h2>
+    <dl>
+      <dt>Listen</dt><dd>Press <b>Start sound</b>. Each planet rings a note as it crosses the brass meridian line above the sun. Closer orbits ring higher, and since closer planets also move faster, every system plays its own rhythm.</dd>
+      <dt>Play</dt><dd>Drag anywhere to throw a planet. The dotted line shows where it will go and the note it will play. Tap empty sky to drop one into a circular orbit.</dd>
+      <dt>Choose</dt><dd>Tap a planet to choose it. You can then give it moons, ride along on it, or remove it. Lagrange points and strings follow the chosen planet.</dd>
+      <dt>Explore</dt><dd><b>Systems</b> loads real and historic setups, each with a short story. <b>Tune</b> changes the sound, the gravity, what's drawn over the sky and the camera.</dd>
+      <dt>Keys</dt><dd><kbd>Space</kbd> pause · <kbd>N</kbd> new · <kbd>C</kbd> clear · <kbd>M</kbd> mute · <kbd>T</kbd> tune · <kbd>?</kbd> help. Mode keys are listed in Tune.</dd>
+    </dl>
+    <p class="help-foot">The science behind every mode, with the numbers measured in the simulation, is in the <a href="https://github.com/sevvak/meridian-orrery#readme" target="_blank" rel="noopener">README on GitHub</a>.</p>
+    <button type="button" class="primary" id="helpClose">Got it</button>
+  </div>
+</div>
+
+<nav class="controls">
+  <div class="chosen-wrap" id="chosenBar" hidden>
+    <div class="chosen" role="group" aria-label="Chosen planet">
+      <span class="chosen-name"><span class="dot" id="chosenDot"></span><b id="chosenName"></b></span>
+      <button type="button" id="chMoon">Add moon</button>
+      <button type="button" id="chRide" aria-pressed="false">Ride along</button>
+      <button type="button" id="chRemove">Remove</button>
+      <button type="button" class="close" id="chClose" aria-label="Let go of this planet">×</button>
+    </div>
+  </div>
   <button id="sound" class="primary waiting" type="button">Start sound</button>
   <button id="pause" type="button">Pause</button>
   <select id="preset" aria-label="Load a system">
     <option value="" selected hidden>Systems</option>
-    <option value="twelve">Twelve-beat alignment</option>
-    <option value="galilean">Jupiter's moons</option>
-    <option value="trappist">TRAPPIST-1</option>
-    <option value="inner">Inner planets</option>
-    <option value="rosettes">Einstein's rosettes</option>
-    <option value="kepler">Kepler's laws</option>
-    <option value="trojans">Jupiter's Trojans</option>
-    <option value="venus">Dance of Venus</option>
-    <option value="ptolemy">Ptolemy's sky</option>
-    <option value="random">Random resonant chain</option>
+    <optgroup label="Rhythms">
+      <option value="twelve">Twelve-beat alignment</option>
+      <option value="random">Random resonant chain</option>
+    </optgroup>
+    <optgroup label="Real systems">
+      <option value="inner">Inner planets</option>
+      <option value="moons">Moons of Earth and Jupiter</option>
+      <option value="galilean">Jupiter's moons, up close</option>
+      <option value="trappist">TRAPPIST-1</option>
+    </optgroup>
+    <optgroup label="Lessons">
+      <option value="kepler">Kepler's laws</option>
+      <option value="rosettes">Einstein's rosettes</option>
+      <option value="trojans">Jupiter's Trojans</option>
+      <option value="venus">Dance of Venus</option>
+      <option value="ptolemy">Ptolemy's sky</option>
+    </optgroup>
   </select>
   <button id="clear" type="button">Clear</button>
-  <button id="tuneBtn" type="button" aria-expanded="false" aria-controls="tune">Tune</button>
+  <button id="tuneBtn" type="button" aria-expanded="false" aria-controls="tune">Tune<span class="badge" id="tuneBadge" hidden></span></button>
   <button id="logBtn" class="narrow-only" type="button" aria-expanded="false" aria-controls="log">Orbits</button>
-  <div class="hint">Drag to throw · tap empty sky for a circular orbit · tap a planet to remove it<span class="keys"> · <kbd>Space</kbd> pause <kbd>N</kbd> new <kbd>C</kbd> clear <kbd>M</kbd> mute <kbd>T</kbd> tune; mode keys are in Tune</span></div>
+  <button id="helpBtn" type="button" aria-expanded="false" aria-controls="help" aria-label="How to play">?</button>
+  <div class="hint">Drag to throw · tap empty sky for a circular orbit · tap a planet to choose it<span class="keys"> · <kbd>Space</kbd> pause · <kbd>?</kbd> help</span></div>
 </nav>
 
 <script>
@@ -199,6 +254,8 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   // ---- world constants ----
   // Units: 1 = smaller viewport dimension, G = 1, so a body's mass is its GM. 1 au = 0.2 units.
   const GM0 = 0.033, SUN_R = 0.03, R_MIN = 0.07, R_MAX = 0.47, N = 15, BW = (R_MAX - R_MIN) / N, AU = 0.2;
+  // Moons sit at these fractions of their planet's Hill radius (the edge of its gravitational reach)
+  const MOON_SLOTS = [0.25, 0.33, 0.42], MAX_MOONS = 24, MOON_SOFT2 = 1e-12, MOON_PX = 28, MOON_MIN_T = 0.125, ROMAN = ['I', 'II', 'III'];
   const STRING_DT = 0.05, MAX_STRINGS = 2400;   // strings: one set of lines every 0.05 s of orbit time
   const MAX_AST = 48, AST_TRAIL = reduce ? 120 : 700, ROUTH = 0.0385;   // L4/L5 are stable only below this mass ratio (Routh, 1875)
   const THROW = 2.2, MAX_PLANETS = 14, TRAIL = reduce ? 30 : 110, TRAIL_LONG = reduce ? 400 : 2000, DT = 1 / 240, SOFT2 = 0.0004;
@@ -252,6 +309,10 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       text: 'Venus goes round the Sun 13 times while Earth goes round 8, so every 8 years they line up in the same five places. A faint line joins them every moment, and over those 8 years (about 30 seconds here) the lines weave a five-petal rose.',
       ellipses: [['Venus', 0.24 * 0.7233 * 1.0068, 0.0068, -90, 2.45e-6], ['Earth', 0.24 * 1.0167, 0.0167, -90, 3.00e-6]] },
   };
+  PRESETS.moons = { name: 'Moons of Earth and Jupiter', view: 'fixed', mass: 1,
+    text: "Earth's Moon sits a quarter of the way to the edge of Earth's gravitational reach, as the real one does, so a month here is about a thirteenth of a year, as it is for us. Jupiter's Io, Europa and Ganymede start in their 1 : 2 : 4 rhythm. Moons chime an octave above their planet at every full moon.",
+    ellipses: [['Earth', 0.22, 0, -90, 3.00e-6], ['Jupiter', 0.38, 0, 90, JUPITER]],
+    moons: { Earth: [['Moon', 0.257]], Jupiter: [['Io', 0.16], ['Europa', 0.254], ['Ganymede', 0.403]] } };
   PRESETS.ptolemy = { ...PRESETS.inner, name: "Ptolemy's sky", view: 'centred', focus: 'Earth',
     bodies: PRESETS.inner.bodies.filter(b => b[0] !== 'Mercury'),   // Mercury loops three times a year and would fill the middle
     text: 'The camera rides on Earth without turning, the way ancient astronomers saw the sky. The Sun circles us once a year. Venus traces a five-petal rose over 8 years, and Mars loops backwards each time Earth overtakes it. Ptolemy explained those loops with circles on circles.' };
@@ -299,6 +360,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const massOf = p => p.m0 * GM0 * settings.mass;          // a planet
   const rel = p => [p.x - sun.x, p.y - sun.y];
   const relR = p => Math.hypot(p.x - sun.x, p.y - sun.y);
+  const isPlanet = p => !p.ast && !p.moon;
   function com() {
     let M = GM(), x = M * sun.x, y = M * sun.y, vx = M * sun.vx, vy = M * sun.vy;
     for (const p of planets) { const m = massOf(p); M += m; x += m * p.x; y += m * p.y; vx += m * p.vx; vy += m * p.vy; }
@@ -357,7 +419,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
 
   // ---- planets & systems ----
   function addPlanet(x, y, vx, vy, name, m0 = JUPITER, ast = false) {
-    const same = planets.filter(p => !!p.ast === ast);
+    const same = planets.filter(p => !p.moon && !!p.ast === ast);
     if (same.length >= (ast ? MAX_AST : MAX_PLANETS)) planets.splice(planets.indexOf(same[0]), 1);
     if (!name) { name = 'Planet ' + GREEK[thrown % GREEK.length]; thrown++; }
     planets.push({ id: nextId++, name, m0, ast, x, y, vx, vy, ax: 0, ay: 0, trail: [], flash: 0, period: 0, last: {}, note: null,
@@ -409,6 +471,9 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     centreOnMass();
     if (p.swarms) for (const [k, n] of Object.entries(p.swarms)) dropSwarm(k, n);
     if (p.focus) focus = planets.find(q => q.name === p.focus) || null;
+    if (p.moons) for (const [h, list] of Object.entries(p.moons)) {
+      const H = planets.find(q => q.name === h); if (H) list.forEach(([n, f]) => addMoon(H, n, f));
+    }
     $('caption').innerHTML = `<b>${p.name}</b>${p.text}`;
     renderLog();
   }
@@ -438,7 +503,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       for (let b = a + 1; b < planets.length; b++) {
         const B = planets[b], mB = B.m0 * GM0 * mult;
         if (!mA && !mB) continue;   // two massless asteroids ignore each other
-        const ex = B.x - A.x, ey = B.y - A.y, d2 = ex * ex + ey * ey + SOFT2, f = 1 / (d2 * Math.sqrt(d2));
+        const ex = B.x - A.x, ey = B.y - A.y, d2 = ex * ex + ey * ey + (A.moon || B.moon ? MOON_SOFT2 : SOFT2), f = 1 / (d2 * Math.sqrt(d2));
         A.ax += mB * ex * f; A.ay += mB * ey * f;
         B.ax -= mA * ex * f; B.ay -= mA * ey * f;
       }
@@ -453,6 +518,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     accel();
     for (const b of all) { b.vx += b.ax * h; b.vy += b.ay * h; }
     for (const p of planets) {
+      if (p.moon) { moonStep(p); continue; }
       const [rx, ry] = rel(p), r = Math.hypot(rx, ry);
       for (let k = 0; k < MER.length; k++) {
         const m = MER[k], before = -p.px * m.s + p.py * m.c, after = -rx * m.s + ry * m.c;
@@ -474,7 +540,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     }
     if (planets.some(p => p.dead)) {
       planets = planets.filter(p => {
-        if (p.dead === 'sun' && !p.ast) {   // the sun swallows the planet and its momentum
+        if (p.dead === 'sun' && isPlanet(p)) {   // the sun swallows the planet and its momentum
           const m = massOf(p), M = GM();
           sun.vx = (M * sun.vx + m * p.vx) / (M + m); sun.vy = (M * sun.vy + m * p.vy) / (M + m);
           swallow();
@@ -552,18 +618,18 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   function swallow() { ripples.push({ x: 0, y: 0, i: 0, age: 0, kind: 'sun' }); sunPulse = 1; thud(); }
 
   // ---- Lagrange points of the heaviest planet, and asteroid swarms ----
-  function primary() { let best = null; for (const p of planets) if (!p.ast && (!best || p.m0 > best.m0)) best = p; return best; }
+  function primary() { let best = null; for (const p of planets) if (isPlanet(p) && (!best || p.m0 > best.m0)) best = p; return best; }
   function framePlanet() { return focus && planets.includes(focus) ? focus : primary(); }   // the chosen planet, else the heaviest
   function clearTrails() { for (const p of planets) p.trail = []; sun.trail = []; }
   function setFocus(p) { focus = p; renderLog(); }
   function cycleFocus() {
-    const list = planets.filter(p => !p.ast).sort((a, b) => relR(a) - relR(b)); if (!list.length) return;
+    const list = planets.filter(isPlanet).sort((a, b) => relR(a) - relR(b)); if (!list.length) return;
     setFocus(list[(list.indexOf(framePlanet()) + 1) % list.length]);
   }
   function addStrings() {   // lines from the chosen planet to its nearest neighbours by orbit size
     const F = framePlanet(); if (!F) return;
     const rf = relR(F), a = viewPoint(F.x, F.y);
-    const others = planets.filter(p => !p.ast && p !== F).sort((u, v) => Math.abs(relR(u) - rf) - Math.abs(relR(v) - rf)).slice(0, 6);
+    const others = planets.filter(p => isPlanet(p) && p !== F).sort((u, v) => Math.abs(relR(u) - rf) - Math.abs(relR(v) - rf)).slice(0, 6);
     for (const P of others) strings.push({ a: [a[0], a[1], ...viewPoint(P.x, P.y)], i: P.note ?? band(relR(P)) });
     if (strings.length > MAX_STRINGS) strings.splice(0, strings.length - MAX_STRINGS);
   }
@@ -591,6 +657,51 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       addPlanet(sun.x + x, sun.y + y, sun.vx - w * y, sun.vy + w * x, key + ' asteroid', 0, true);
     }
   }
+  // ---- moons: massless bodies held by a planet, drawn enlarged ----
+  const moonsOf = H => planets.filter(q => q.host === H).sort((a, b) => a.mk - b.mk);
+  function hillOf(H) { const m = massOf(H); return m ? relR(H) * Math.cbrt(m / (3 * GM())) : 0; }   // edge of the planet's reach
+  const moonMag = H => { const rH = hillOf(H); return rH ? Math.max(1, MOON_PX / (0.42 * rH * S)) : 1; };
+  function moonReason(H, f) {   // why this planet can't take this moon, or ''
+    if (!settings.mass) return 'Planets are weightless right now, so they cannot hold moons. Set Planet mass to Real in Tune.';
+    if (planets.filter(q => q.moon).length >= MAX_MOONS) return 'The sky already has 24 moons. Remove some first.';
+    if (f == null) return `${H.name} already has three moons.`;
+    const r = relR(H), Tp = 2 * Math.PI * Math.sqrt(r * r * r / GM());
+    if (Tp * Math.pow(f, 1.5) / Math.sqrt(3) < MOON_MIN_T) return `${H.name} orbits too fast for the simulation to follow a moon. Try a planet farther from the sun.`;
+    return '';
+  }
+  function addMoon(H, name, f) {   // returns '' on success, or the reason it can't
+    const used = moonsOf(H).map(q => q.mk);
+    let mk = 0; while (used.includes(mk)) mk++;
+    if (f == null) f = MOON_SLOTS[mk];
+    const why = moonReason(H, f); if (why) return why;
+    const ux = H.x - sun.x, uy = H.y - sun.y, u = Math.hypot(ux, uy), d = f * hillOf(H);
+    const ox = ux / u * d, oy = uy / u * d;                                          // start at full moon, beyond the planet
+    const dir = Math.sign(ux * (H.vy - sun.vy) - uy * (H.vx - sun.vx)) || 1;         // and go round the same way the planet does
+    const v = Math.sqrt(massOf(H) / d) * dir;
+    planets.push({ id: nextId++, name: name || `${H.name} ${ROMAN[mk]}`, moon: true, host: H, mk, m0: 0,
+      x: H.x + ox, y: H.y + oy, vx: H.vx - v * oy / d, vy: H.vy + v * ox / d, ax: 0, ay: 0,
+      trail: [], mtrail: [], flash: 0, period: 0, last: {}, note: null, peri: [], wedges: [], fs: 0 });
+    dirty = true;
+    return '';
+  }
+  function moonStep(p) {
+    const H = p.host;
+    if (!planets.includes(H) || H.dead) { p.dead = 'lost'; return; }
+    const ox = p.x - H.x, oy = p.y - H.y, rH = hillOf(H);
+    if (!rH || Math.hypot(ox, oy) > 0.9 * rH) {   // pulled away by the sun or a passing planet
+      p.dead = 'lost'; ripples.push({ x: p.x - sun.x, y: p.y - sun.y, i: band(relR(H)), age: 0, kind: 'pop' }); return;
+    }
+    const ux = H.x - sun.x, uy = H.y - sun.y, side = Math.sign(ux * oy - uy * ox);
+    if (p.fs && side && side !== p.fs && ux * ox + uy * oy > 0) moonChime(p);   // full moon: sun, planet and moon in a line
+    if (side) p.fs = side;
+  }
+  function moonChime(p) {
+    p.flash = 1;
+    if (p.last.full != null) p.period = simT - p.last.full;   // full moon to full moon
+    p.last.full = simT;
+    const H = p.host, i = H.note ?? band(relR(H)), ms = moonsOf(H), j = Math.min(N - 1, i + ms.length - 1 - ms.indexOf(p));
+    play(settings.voice, NOTES[j] + 12, Math.max(-1, Math.min(1, (H.x - sun.x) * 2)), 0.07);   // an octave up; inner moons higher
+  }
   function camps(L, asts) {   // how many asteroids sit within ~35° and 20% of L4 and L5
     const out = { L4: 0, L5: 0 };
     for (const key of ['L4', 'L5']) {
@@ -606,7 +717,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   // ---- conjunctions: 3+ planets (and most of the system) on one ray from the sun ----
   function detectConjunction(now) {
     const pts = [];
-    for (const p of planets) { if (p.ast) continue; const [rx, ry] = rel(p), r = Math.hypot(rx, ry); if (r > 0.04 && r < 0.6) pts.push({ p, a: Math.atan2(ry, rx) }); }
+    for (const p of planets) { if (!isPlanet(p)) continue; const [rx, ry] = rel(p), r = Math.hypot(rx, ry); if (r > 0.04 && r < 0.6) pts.push({ p, a: Math.atan2(ry, rx) }); }
     pts.sort((u, v) => u.a - v.a);
     const n = pts.length, WIN = 0.055;
     let best = null;
@@ -619,7 +730,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
         if (!best || j - i + 1 > best.c) best = { c: j - i + 1, list: ext.slice(i, j + 1) };
       }
     }
-    const need = Math.max(3, Math.ceil(planets.filter(p => !p.ast).length * 0.6));
+    const need = Math.max(3, Math.ceil(planets.filter(isPlanet).length * 0.6));
     const aligned = !!best && best.c >= need;
     if (aligned && !wasAligned && now - lastConjReal > 1.2) {
       lastConjReal = now; conjCount++;
@@ -701,10 +812,10 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   function hitPlanet(e) {
     let best = null, bd = Infinity;
     for (const p of planets) {
-      if (p.ast) continue;
+      if (!isPlanet(p)) continue;
       const [x, y] = screenOf(p.x, p.y), d = Math.hypot(x - e.clientX, y - e.clientY);
       const i = p.note ?? band(relR(p));
-      if (d < Math.max(14, sizeOf(i) + 8) && d < bd) { bd = d; best = p; }
+      if (d < Math.max(18, sizeOf(i) + 10) && d < bd) { bd = d; best = p; }
     }
     return best;
   }
@@ -713,18 +824,19 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     for (const q of L.pts) { const [x, y] = screenOf(sun.x + q[1], sun.y + q[2]); if (Math.hypot(x - e.clientX, y - e.clientY) < 18) return q[0]; }
     return null;
   }
+  function removePlanet(hit) {
+    planets = planets.filter(p => p !== hit && p.host !== hit); dirty = true;
+    if (focus === hit) focus = null;
+    const [rx, ry] = rel(hit);
+    ripples.push({ x: rx, y: ry, i: hit.note ?? band(Math.hypot(rx, ry)), age: 0, kind: 'pop' });
+    pop(Math.max(-1, Math.min(1, rx * 2)));
+    renderLog();
+  }
   cv.addEventListener('pointerdown', e => {
     const lp = hitLagrange(e);
     if (lp) { dropSwarm(lp, 6); renderLog(); return; }
     const hit = hitPlanet(e);
-    if (hit) {
-      planets = planets.filter(p => p !== hit); dirty = true;
-      const [rx, ry] = rel(hit);
-      ripples.push({ x: rx, y: ry, i: hit.note ?? band(Math.hypot(rx, ry)), age: 0, kind: 'pop' });
-      pop(Math.max(-1, Math.min(1, rx * 2)));
-      renderLog();
-      return;
-    }
+    if (hit) { setFocus(hit === focus ? null : hit); return; }   // tap a planet to choose it; tap again to let go
     const p = toWorld(e);
     if (Math.hypot(p.x - sun.x, p.y - sun.y) < SUN_R * 1.6) return;
     cv.setPointerCapture(e.pointerId);
@@ -757,13 +869,42 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   $('pause').addEventListener('click', togglePause);
   $('preset').addEventListener('change', e => { if (e.target.value) loadPreset(e.target.value); e.target.selectedIndex = 0; });
   $('clear').addEventListener('click', clearSky);
-  function toggleTune() {
-    const t = $('tune'); t.hidden = !t.hidden; $('tuneBtn').setAttribute('aria-expanded', String(!t.hidden));
+  function toggleTune(open) {
+    const t = $('tune'); t.hidden = !(open ?? t.hidden); $('tuneBtn').setAttribute('aria-expanded', String(!t.hidden));
   }
-  $('tuneBtn').addEventListener('click', toggleTune);
-  $('logBtn').addEventListener('click', () => {
-    const open = $('log').classList.toggle('open'); $('logBtn').setAttribute('aria-expanded', String(open));
-  });
+  $('tuneBtn').addEventListener('click', () => toggleTune());
+  $('tuneClose').addEventListener('click', () => { toggleTune(false); $('tuneBtn').focus(); });
+  function toggleLog(open) {
+    const l = $('log'), o = l.classList.toggle('open', open ?? !l.classList.contains('open')); $('logBtn').setAttribute('aria-expanded', String(o));
+  }
+  $('logBtn').addEventListener('click', () => toggleLog());
+  $('logClose').addEventListener('click', () => toggleLog(false));
+  function toggleHelp(open) {
+    const h = $('help'); h.hidden = !(open ?? h.hidden); $('helpBtn').setAttribute('aria-expanded', String(!h.hidden));
+    if (!h.hidden) $('helpClose').focus(); else $('helpBtn').focus();
+  }
+  $('helpBtn').addEventListener('click', () => toggleHelp(true));
+  $('helpClose').addEventListener('click', () => toggleHelp(false));
+  $('help').addEventListener('pointerdown', e => { if (e.target === $('help')) toggleHelp(false); });
+  $('chMoon').addEventListener('click', () => tryMoon(focus));
+  $('chRide').addEventListener('click', () => setView(settings.view === 'centred' ? 'fixed' : 'centred'));
+  $('chRemove').addEventListener('click', () => { if (focus) removePlanet(focus); });
+  $('chClose').addEventListener('click', () => setFocus(null));
+  function renderChosen(FP) {   // the action bar for the planet you tapped, and a line in the log
+    const on = !!(focus && planets.includes(focus)), bar = $('chosenBar');
+    if (bar.hidden === on) bar.hidden = !on;
+    if (on) {
+      $('chosenName').textContent = focus.name;
+      $('chosenDot').style.background = col(focus.note ?? band(relR(focus)));
+      $('chRide').setAttribute('aria-pressed', String(settings.view === 'centred'));
+      $('chRide').textContent = settings.view === 'centred' ? 'Riding along' : 'Ride along';
+    }
+    $('chosenLine').innerHTML = on ? `Chosen: <b>${esc(focus.name)}</b>. Tap it again to let go.`
+      : FP ? `Tap a planet to choose it. Until then, modes use the heaviest: <b>${esc(FP.name)}</b>.` : '';
+    const n = (settings.einstein ? 1 : 0) + settings.kepler + settings.lagrange + settings.strings + (settings.view !== 'fixed') + (settings.mass !== 1);
+    const b = $('tuneBadge'); b.hidden = !n; b.textContent = n;
+    $('tuneBtn').setAttribute('aria-label', n ? `Tune, ${n} setting${n > 1 ? 's' : ''} changed` : 'Tune');
+  }
 
   const scaleSel = $('scale');
   scaleSel.innerHTML = Object.entries(SCALES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
@@ -808,7 +949,17 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const syncStrings = segment('strings', 'strings', v => v === '1', stringsChanged);
   function setStrings(v) { settings.strings = v; syncStrings(); stringsChanged(); }
   const VIEWS = ['fixed', 'rotating', 'centred'];
-  const pickFrom = e => { const b = e.target.closest('.pick'); if (!b) return; const p = planets.find(q => q.id === Number(b.dataset.id)); if (p) setFocus(p === focus ? null : p); };
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+  }
+  function tryMoon(H) {
+    if (!H) { toast('Add a planet first, then give it a moon.'); return; }
+    const why = addMoon(H); if (why) toast(why); renderLog();
+  }
+  const pickFrom = e => {
+    const b = e.target.closest('.pick'); if (!b) return; const p = planets.find(q => q.id === Number(b.dataset.id)); if (p) setFocus(p === focus ? null : p); };
   $('rows').addEventListener('pointerdown', pickFrom);   // pointerdown, because the log redraws several times a second
   $('rows').addEventListener('click', e => { if (e.detail === 0) pickFrom(e); });   // keyboard
   const slider = (id, outId, key, after) => $(id).addEventListener('input', () => {
@@ -818,7 +969,17 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   slider('gravity', 'gval', 'gravity', () => { dirty = true; resetAllKepler(); });
 
   addEventListener('keydown', e => {
+    if (e.key === 'Escape') {   // close the top-most thing
+      if (!$('help').hidden) toggleHelp(false);
+      else if (!$('tune').hidden) toggleTune(false);
+      else if ($('log').classList.contains('open')) toggleLog(false);
+      else if (focus) setFocus(null);
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input,select,textarea')) return;
+    if (e.key === '?') { toggleHelp($('help').hidden); return; }
+    if (!$('help').hidden) return;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && focus) { e.preventDefault(); removePlanet(focus); return; }
     const k = e.key.toLowerCase();
     if (k === ' ') { if (e.target.closest('button')) return; e.preventDefault(); togglePause(); }
     else if (k === 'n') loadPreset('random');
@@ -830,6 +991,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     else if (k === 'v') setView(VIEWS[(VIEWS.indexOf(settings.view) + 1) % VIEWS.length]);
     else if (k === 's') setStrings(!settings.strings);
     else if (k === 'f') cycleFocus();
+    else if (k === 'o') tryMoon(framePlanet());
     else if (k === 't') toggleTune();
   });
 
@@ -995,6 +1157,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   function drawTrails() {   // drawn without the view rotation: each point is stored as it looked when recorded
     const longT = settings.einstein || settings.view !== 'fixed' ? TRAIL_LONG : TRAIL;
     for (const p of planets) {
+      if (p.moon) continue;   // moons draw their own enlarged trails
       const maxT = p.ast ? AST_TRAIL : longT;
       if (!paused && (!p.ast || (p.tk = (p.tk || 0) + 1) % 2 === 0)) p.trail.push(...viewPoint(p.x, p.y));
       if (p.trail.length > maxT * 2) p.trail.splice(0, p.trail.length - maxT * 2);
@@ -1028,6 +1191,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   }
   function drawBodies(dt) {
     for (const p of planets) {
+      if (p.moon) continue;
       if (p.ast) {
         const [x, y] = toCanvas(p.x, p.y);
         ctx.fillStyle = `rgba(236,227,207,${0.7 + p.flash * 0.3})`;
@@ -1054,6 +1218,38 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, halo, 0, 7); ctx.fill();
       ctx.fillStyle = col(i, 1, 78 + p.flash * 14); ctx.beginPath(); ctx.arc(x, y, size, 0, 7); ctx.fill();
       p.flash = Math.max(0, p.flash - dt * 2.2);
+    }
+    drawMoons(dt);
+    const FP = framePlanet();   // ring the planet that the modes follow
+    if (FP && (focus === FP || settings.lagrange || settings.strings || settings.view !== 'fixed')) {
+      const [x, y] = toCanvas(FP.x, FP.y), rr = sizeOf(FP.note ?? band(relR(FP))) + 9;
+      ctx.save();
+      ctx.strokeStyle = focus === FP ? 'rgba(236,227,207,.9)' : 'rgba(212,176,106,.6)'; ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 4]); ctx.lineDashOffset = -simT * 6;
+      ctx.beginPath(); ctx.arc(x, y, rr, 0, 7); ctx.stroke();
+      ctx.restore();
+      ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = focus === FP ? 'rgba(236,227,207,.95)' : 'rgba(212,176,106,.8)';
+      upright(FP.name, x, y, 0, rr + 6);
+      ctx.textBaseline = 'alphabetic';
+    }
+  }
+  function drawMoons(dt) {   // enlarged around their planet; the orbit log says by how much
+    for (const p of planets) {
+      if (!p.moon || !planets.includes(p.host)) continue;
+      const H = p.host, k = moonMag(H) * S, [hx, hy] = toCanvas(H.x, H.y), i = H.note ?? band(relR(H));
+      if (!paused) { p.mtrail.push(p.x - H.x, p.y - H.y); if (p.mtrail.length > 96) p.mtrail.splice(0, 2); }
+      const t = p.mtrail, n = t.length / 2;
+      if (n > 1) {
+        ctx.strokeStyle = col(i, 0.3, 86); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx + t[0] * k, hy + t[1] * k);
+        for (let j = 1; j < n; j++) ctx.lineTo(hx + t[2 * j] * k, hy + t[2 * j + 1] * k);
+        ctx.stroke();
+      }
+      const x = hx + (p.x - H.x) * k, y = hy + (p.y - H.y) * k;
+      if (p.flash > 0.02) { ctx.fillStyle = col(i, 0.35 * p.flash, 90); ctx.beginPath(); ctx.arc(x, y, 2 + 7 * p.flash, 0, 7); ctx.fill(); }
+      ctx.fillStyle = col(i, 1, 90); ctx.beginPath(); ctx.arc(x, y, 2.2 + p.flash, 0, 7); ctx.fill();
+      p.flash = Math.max(0, p.flash - dt * 2.5);
     }
   }
   function noteTag(x, y, i) {   // a level pill even when the view turns
@@ -1121,15 +1317,26 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     w.fillStyle = '#fff4dc'; w.beginPath(); w.arc(R + path[n - 2] * k, R + path[n - 1] * k, 2.5, 0, 7); w.fill();
     text.innerHTML = `The sun circles the centre of mass, up to <strong>${(max / AU).toPrecision(2)} au</strong> away. Shown <strong>×${fmtMag(k / S)}</strong>.`;
   }
+  function orbitalPeriod(p) {   // from the orbit's current energy, so it shows straight away
+    const mu = GM() + massOf(p), dvx = p.vx - sun.vx, dvy = p.vy - sun.vy, E = (dvx * dvx + dvy * dvy) / 2 - mu / relR(p);
+    return E < 0 ? 2 * Math.PI * Math.sqrt(Math.pow(-mu / (2 * E), 3) / mu) : null;
+  }
+  function moonRows(H) {
+    const ms = moonsOf(H), i = H.note ?? band(relR(H));
+    return ms.map((m, k) => {
+      const j = Math.min(N - 1, i + ms.length - 1 - k);
+      return `<tr class="sub"><td title="${esc(m.name)}">${esc(m.name)}</td><td>${noteName(NOTES[j] + 12)}</td><td>${m.period ? (m.period / settings.tempo).toFixed(2) + ' s' : '…'}</td><td></td><td></td></tr>`;
+    }).join('');
+  }
   function renderLog() {
     const FP = framePlanet();
-    const list = planets.filter(p => !p.ast).map(p => ({ p, r: relR(p) })).sort((a, b) => a.r - b.r);
+    const list = planets.filter(isPlanet).map(p => ({ p, r: relR(p) })).sort((a, b) => a.r - b.r);
     const html = list.length ? list.map(({ p, r }) => {
       const i = p.note ?? band(r);
-      const spread = settings.kepler ? areaSpread(p) : null;
+      const spread = settings.kepler ? areaSpread(p) : null, T = orbitalPeriod(p);
       const last = settings.kepler ? (spread == null ? '…' : '±' + spread.toFixed(spread < 1 ? 2 : 1) + '%') : settings.einstein ? (p.shift == null ? '…' : (p.shift >= 0 ? '+' : '') + p.shift.toFixed(1) + '°') : (r / AU).toFixed(2) + ' au';
-      return `<tr><td><button type="button" class="pick" data-id="${p.id}" aria-pressed="${p === FP}" title="${esc(p.name)}"><span class="dot" style="background:${col(i)}"></span>${esc(p.name)}</button></td><td>${noteName(NOTES[i])}</td><td>${p.period ? (p.period / settings.tempo).toFixed(2) + ' s' : '…'}</td><td>${last}</td></tr>`;
-    }).join('') : '<tr><td colspan="4" class="empty">The sky is empty. Drag anywhere to throw a planet.</td></tr>';
+      return `<tr><td><button type="button" class="pick" data-id="${p.id}" aria-pressed="${p === FP}" title="${esc(p.name)}"><span class="dot" style="background:${col(i)}"></span>${esc(p.name)}</button></td><td>${noteName(NOTES[i])}</td><td>${T ? (T / settings.tempo).toFixed(2) + ' s' : 'leaving'}</td><td>${last}</td><td>${moonsOf(p).length || ''}</td></tr>` + moonRows(p);
+    }).join('') : '<tr><td colspan="5" class="empty">The sky is empty. Drag anywhere to throw a planet.</td></tr>';
     if (html !== lastRows) { $('rows').innerHTML = html; lastRows = html; }
     $('count').textContent = list.length;
     const L = settings.lagrange ? lagrange() : null, lag = $('lagLine');
@@ -1142,6 +1349,10 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       const c = L ? camps(L, asts) : null;
       al.innerHTML = `Asteroids: <strong>${asts.length}</strong>` + (c ? ` · near L4 <strong>${c.L4}</strong> · near L5 <strong>${c.L5}</strong>` : '');
     }
+    const hosts = planets.filter(p => isPlanet(p) && moonsOf(p).length), ml = $('moonLine');
+    ml.hidden = !hosts.length;
+    if (hosts.length) ml.innerHTML = 'Moon orbits are drawn enlarged: ' + hosts.map(H => `${esc(H.name)} <strong>×${Math.round(moonMag(H))}</strong>`).join(' · ') + '. Moon periods run from full moon to full moon.';
+    renderChosen(FP);
     $('col4').textContent = settings.kepler ? 'Wedge area' : settings.einstein ? 'Turn/orbit' : 'Radius';
     renderWobble();
   }
