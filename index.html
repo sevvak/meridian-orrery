@@ -42,7 +42,11 @@ body{margin:0;background:var(--ink);color:var(--parchment);font-family:var(--mon
 .log th:not(:first-child),.log td:not(:first-child){text-align:right}
 .log td{padding:3px 0;font-size:11.5px;white-space:nowrap}
 .log td:first-child{max-width:96px;overflow:hidden;text-overflow:ellipsis}
-.log .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.log .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px;flex:none}
+.log .pick{all:unset;cursor:pointer;display:flex;align-items:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:2px}
+.log .pick:hover{color:var(--brass)}
+.log .pick[aria-pressed="true"]{color:var(--brass);text-decoration:underline;text-underline-offset:3px}
+.log .pick:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 .log .empty{color:var(--muted);text-align:left!important;padding:6px 0;line-height:1.5;white-space:normal}
 .wobble{display:flex;gap:12px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--brass-soft)}
 .wobble canvas{width:84px;height:84px;flex:none;border:1px solid var(--brass-soft);border-radius:50%;background:rgba(7,11,24,.6)}
@@ -75,6 +79,7 @@ button[aria-expanded="true"]{border-color:var(--brass);color:var(--brass)}
 
 .tune{flex-basis:100%;max-width:460px;max-height:min(60vh,560px);overflow:auto;background:var(--ink-raised);border:1px solid var(--brass-soft);border-radius:6px;padding:14px 16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px 12px;align-items:center}
 .tune .lbl{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.tune .lbl kbd{font:inherit;letter-spacing:0;color:var(--parchment);border:1px solid var(--brass-soft);border-radius:3px;padding:0 4px;margin-left:5px}
 .tune .ctl{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
 .tune select{border-radius:4px;padding:8px 30px 8px 10px;width:100%}
 .seg{display:inline-flex;border:1px solid var(--brass-soft);border-radius:999px;overflow:hidden}
@@ -113,6 +118,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   <footer>
     <span id="lagLine" hidden></span>
     <span id="astLine" hidden></span>
+    <span>Click a planet's name to choose it for the view, Lagrange points and strings.</span>
     <span>Conjunctions seen: <strong id="conjCount">0</strong></span>
     <span>Period² ∝ radius³. Kepler's third law sets the rhythm.</span>
   </footer>
@@ -135,25 +141,30 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       <div class="seg" id="mass" role="group" aria-label="Planet mass"><button type="button" data-v="0">None</button><button type="button" data-v="1">Real</button><button type="button" data-v="10">×10</button><button type="button" data-v="100">×100</button></div>
       <span class="note">Real uses true mass ratios. Heavier planets tug on each other and on the sun, and resonant systems drift into chaos.</span>
     </div>
-    <span class="lbl">Einstein</span>
+    <span class="lbl">Einstein<kbd>E</kbd></span>
     <div class="ctl">
       <div class="seg" id="einstein" role="group" aria-label="Relativity strength"><button type="button" data-v="0">Off</button><button type="button" data-v="1">3°</button><button type="button" data-v="2">10°</button><button type="button" data-v="3">30°</button></div>
       <span class="note">General relativity turns every orbit a little each lap. Values are the turn per orbit at 1 au. Earth's real turn is 0.04″, so even 3° is about 300,000 times stronger than reality.</span>
     </div>
-    <span class="lbl">Kepler</span>
+    <span class="lbl">Kepler<kbd>K</kbd></span>
     <div class="ctl">
       <div class="seg" id="kepler" role="group" aria-label="Kepler wedges"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div>
       <span class="note">Each shaded wedge takes the same time, and Kepler's second law says each has the same area. Ticks mark every 30° of the dial, so they rush together near the sun.</span>
     </div>
-    <span class="lbl">View</span>
+    <span class="lbl">View<kbd>V</kbd></span>
     <div class="ctl">
-      <div class="seg" id="view" role="group" aria-label="View"><button type="button" data-v="fixed">Fixed</button><button type="button" data-v="rotating">Rotating</button></div>
-      <span class="note">Rotating turns the camera with the heaviest planet, so it stays at the top and its Lagrange points stand still.</span>
+      <div class="seg" id="view" role="group" aria-label="View"><button type="button" data-v="fixed">Fixed</button><button type="button" data-v="rotating">Rotating</button><button type="button" data-v="centred">From planet</button></div>
+      <span class="note">Rotating turns the camera with the chosen planet so it stays at the top. From planet rides along on it without turning, the way we see the sky from Earth. Choose the planet by clicking its name in the orbit log; the heaviest is used until you do. F steps through them.</span>
     </div>
-    <span class="lbl">Lagrange</span>
+    <span class="lbl">Lagrange<kbd>L</kbd></span>
     <div class="ctl">
       <div class="seg" id="lagrange" role="group" aria-label="Lagrange points"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div>
-      <span class="note">Marks the five balance points of the heaviest planet. Tap one to drop a swarm of asteroids there.</span>
+      <span class="note">Marks the five balance points of the chosen planet. Tap one to drop a swarm of asteroids there.</span>
+    </div>
+    <span class="lbl">Strings<kbd>S</kbd></span>
+    <div class="ctl">
+      <div class="seg" id="strings" role="group" aria-label="Strings"><button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button></div>
+      <span class="note">Every moment, a faint line joins the chosen planet to its neighbours. Over many orbits the lines weave a rose.</span>
     </div>
   </section>
 
@@ -168,12 +179,14 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     <option value="rosettes">Einstein's rosettes</option>
     <option value="kepler">Kepler's laws</option>
     <option value="trojans">Jupiter's Trojans</option>
+    <option value="venus">Dance of Venus</option>
+    <option value="ptolemy">Ptolemy's sky</option>
     <option value="random">Random resonant chain</option>
   </select>
   <button id="clear" type="button">Clear</button>
   <button id="tuneBtn" type="button" aria-expanded="false" aria-controls="tune">Tune</button>
   <button id="logBtn" class="narrow-only" type="button" aria-expanded="false" aria-controls="log">Orbits</button>
-  <div class="hint">Drag to throw · tap empty sky for a circular orbit · tap a planet to remove it<span class="keys"> · <kbd>Space</kbd> pause <kbd>N</kbd> new <kbd>C</kbd> clear <kbd>M</kbd> mute <kbd>E</kbd> Einstein <kbd>K</kbd> Kepler <kbd>L</kbd> Lagrange <kbd>V</kbd> view <kbd>T</kbd> tune</span></div>
+  <div class="hint">Drag to throw · tap empty sky for a circular orbit · tap a planet to remove it<span class="keys"> · <kbd>Space</kbd> pause <kbd>N</kbd> new <kbd>C</kbd> clear <kbd>M</kbd> mute <kbd>T</kbd> tune; mode keys are in Tune</span></div>
 </nav>
 
 <script>
@@ -186,8 +199,9 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   // ---- world constants ----
   // Units: 1 = smaller viewport dimension, G = 1, so a body's mass is its GM. 1 au = 0.2 units.
   const GM0 = 0.033, SUN_R = 0.03, R_MIN = 0.07, R_MAX = 0.47, N = 15, BW = (R_MAX - R_MIN) / N, AU = 0.2;
+  const STRING_DT = 0.05, MAX_STRINGS = 2400;   // strings: one set of lines every 0.05 s of orbit time
   const MAX_AST = 48, AST_TRAIL = reduce ? 120 : 700, ROUTH = 0.0385;   // L4/L5 are stable only below this mass ratio (Routh, 1875)
-  const THROW = 2.2, MAX_PLANETS = 14, TRAIL = reduce ? 30 : 110, TRAIL_LONG = reduce ? 300 : 1400, DT = 1 / 240, SOFT2 = 0.0004;
+  const THROW = 2.2, MAX_PLANETS = 14, TRAIL = reduce ? 30 : 110, TRAIL_LONG = reduce ? 400 : 2000, DT = 1 / 240, SOFT2 = 0.0004;
   // Einstein mode: perihelion turn per orbit at 1 au, in degrees. Real Earth: 0.04″.
   const EINSTEIN_DEG = [0, 3, 10, 30];
   const JUPITER = 9.55e-4;               // Jupiter/Sun mass ratio: the default for thrown planets
@@ -233,7 +247,14 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     trojans: { name: "Jupiter's Trojans", lagrange: true, view: 'rotating', mass: 1,
       text: 'The camera turns with Jupiter, so its five Lagrange points stand still. Asteroids at L4 (the Greek camp) and L5 (the Trojan camp) stay with it, looping in tadpoles. This Jupiter is 10× heavier than the real one, so a loop takes 20 seconds instead of 150 years. Tap L1, L2 or L3 to see why they are called unstable.',
       ellipses: [['Jupiter', 0.28, 0, -90, 0.01]], swarms: { L4: 12, L5: 12 } },
+    // real eccentricities and masses; ellipses start at aphelion, a(1 + e)
+    venus: { name: 'Dance of Venus', view: 'fixed', strings: true, focus: 'Earth',
+      text: 'Venus goes round the Sun 13 times while Earth goes round 8, so every 8 years they line up in the same five places. A faint line joins them every moment, and over those 8 years (about 30 seconds here) the lines weave a five-petal rose.',
+      ellipses: [['Venus', 0.24 * 0.7233 * 1.0068, 0.0068, -90, 2.45e-6], ['Earth', 0.24 * 1.0167, 0.0167, -90, 3.00e-6]] },
   };
+  PRESETS.ptolemy = { ...PRESETS.inner, name: "Ptolemy's sky", view: 'centred', focus: 'Earth',
+    bodies: PRESETS.inner.bodies.filter(b => b[0] !== 'Mercury'),   // Mercury loops three times a year and would fill the middle
+    text: 'The camera rides on Earth without turning, the way ancient astronomers saw the sky. The Sun circles us once a year. Venus traces a five-petal rose over 8 years, and Mars loops backwards each time Earth overtakes it. Ptolemy explained those loops with circles on circles.' };
 
   // ---- settings (scale, voice, meridians, planet mass remembered per viewer) ----
   let saved = {};
@@ -243,7 +264,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     voice: ['bell', 'marimba', 'glass'].includes(saved.voice) ? saved.voice : 'bell',
     meridians: [1, 2, 3, 4].includes(saved.meridians) ? saved.meridians : 1,
     mass: [0, 1, 10, 100].includes(saved.mass) ? saved.mass : 1,
-    tempo: 1, gravity: 1, einstein: 0, kepler: false, view: 'fixed', lagrange: false,
+    tempo: 1, gravity: 1, einstein: 0, kepler: false, view: 'fixed', lagrange: false, strings: false,
   };
   let lastEinstein = 2;
   // 1/c² chosen so a circular orbit at 1 au turns EINSTEIN_DEG per lap: Δφ = 6πGM / (c² a (1−e²))
@@ -265,11 +286,11 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   }
   buildScale(); buildMeridians();
 
-  let lastAst = -1;
+  let lastAst = -1, focus = null, lastFrameId = null, nextId = 1, strings = [], lastString = 0, lastRows = '';
   let W, H, S, cx, cy, SX = 0, SY = 0, phi = 0, simT = 0, sunPulse = 0, paused = false, thrown = 0, dirty = true;
   let planets = [], ripples = [], beams = [], drag = null;
   let conjCount = 0, wasAligned = false, lastConjReal = -9;
-  const sun = { x: 0, y: 0, vx: 0, vy: 0, ax: 0, ay: 0, path: [] };
+  const sun = { x: 0, y: 0, vx: 0, vy: 0, ax: 0, ay: 0, path: [], trail: [] };
   const cam = { x: 0, y: 0 };
   const stars = document.createElement('canvas');
 
@@ -317,11 +338,17 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     const dx = e.clientX - cx, dy = e.clientY - cy, c = Math.cos(phi), s = Math.sin(phi);
     return { x: (dx * c + dy * s) / S + cam.x, y: (-dx * s + dy * c) / S + cam.y };
   };
-  function viewPoint(x, y) {   // a world point as it looks in the current view; trails store these
-    if (!phi) return [x, y];
-    const dx = x - cam.x, dy = y - cam.y, c = Math.cos(phi), s = Math.sin(phi);
-    return [cam.x + dx * c - dy * s, cam.y + dx * s + dy * c];
+  // Trails and strings are stored relative to the view's origin, as they looked when recorded: the world
+  // origin in the fixed view, the camera when turning, and the chosen planet when riding on it.
+  const ORIGIN = { x: 0, y: 0 };
+  const viewOrigin = () => settings.view === 'fixed' ? ORIGIN : cam;
+  function viewPoint(x, y) {
+    const O = viewOrigin(), dx = x - O.x, dy = y - O.y;
+    if (!phi) return [dx, dy];
+    const c = Math.cos(phi), s = Math.sin(phi);
+    return [dx * c - dy * s, dx * s + dy * c];
   }
+  const spaced = t => t.toUpperCase().split('').join(' ');
   function upright(txt, x, y, dx = 0, dy = 0) {   // text that stays level while the view turns
     if (!phi) { ctx.fillText(txt, x + dx, y + dy); return; }
     ctx.save(); ctx.translate(x, y); ctx.rotate(-phi); ctx.fillText(txt, dx, dy); ctx.restore();
@@ -333,7 +360,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     const same = planets.filter(p => !!p.ast === ast);
     if (same.length >= (ast ? MAX_AST : MAX_PLANETS)) planets.splice(planets.indexOf(same[0]), 1);
     if (!name) { name = 'Planet ' + GREEK[thrown % GREEK.length]; thrown++; }
-    planets.push({ name, m0, ast, x, y, vx, vy, ax: 0, ay: 0, trail: [], flash: 0, period: 0, last: {}, note: null,
+    planets.push({ id: nextId++, name, m0, ast, x, y, vx, vy, ax: 0, ay: 0, trail: [], flash: 0, period: 0, last: {}, note: null,
       peri: [], periAng: null, shift: null, rmax: 0, vr0: 0,
       wedges: [], cur: null, kT: null, wedgeN: 0, lastTick: -1 });
     dirty = true;
@@ -350,7 +377,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     addPlanet(ra * Math.cos(t), ra * Math.sin(t), -Math.sin(t) * v, Math.cos(t) * v, name, m0);
   }
   function resetSun() {
-    Object.assign(sun, { x: 0, y: 0, vx: 0, vy: 0, path: [] });
+    Object.assign(sun, { x: 0, y: 0, vx: 0, vy: 0, path: [], trail: [] });
     cam.x = cam.y = 0;
   }
   function centreOnMass() {   // put the centre of mass at rest at the origin; relative motion is unchanged
@@ -369,22 +396,24 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       p = { name: 'Random resonant chain', r0, text: 'Period ratios ' + qs.map(fmt).join(' : ') + '. Press N for another.',
         bodies: qs.map((q, i) => ['Chain ' + (i + 1), q, NEPTUNE]) };
     }
-    planets = []; ripples = []; beams = []; wasAligned = false;
+    planets = []; ripples = []; beams = []; strings = []; wasAligned = false; focus = null;
     resetSun();
     if (p.einstein && !settings.einstein) setEinstein(p.einstein);
     if (p.kepler && !settings.kepler) setKepler(true);
     if (p.mass && settings.mass !== p.mass) setMass(p.mass);
     if (p.lagrange && !settings.lagrange) setLagrange(true);
     if (p.view && settings.view !== p.view) setView(p.view);
+    if (p.strings && !settings.strings) setStrings(true);
     if (p.ellipses) p.ellipses.forEach(([name, ra, e, deg, m0]) => ellipse(name, ra, e, deg, m0));
     else p.bodies.forEach(([name, q, m0]) => circular(0, -p.r0 * Math.pow(q, 2 / 3), name, m0)); // all start on the meridian
     centreOnMass();
     if (p.swarms) for (const [k, n] of Object.entries(p.swarms)) dropSwarm(k, n);
+    if (p.focus) focus = planets.find(q => q.name === p.focus) || null;
     $('caption').innerHTML = `<b>${p.name}</b>${p.text}`;
     renderLog();
   }
   function clearSky() {
-    planets = []; ripples = []; beams = []; wasAligned = false;
+    planets = []; ripples = []; beams = []; strings = []; wasAligned = false; focus = null;
     resetSun(); dirty = true;
     $('caption').innerHTML = '<b>Empty sky</b>Drag anywhere to throw a planet, or load a system.';
     renderLog();
@@ -524,8 +553,22 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
 
   // ---- Lagrange points of the heaviest planet, and asteroid swarms ----
   function primary() { let best = null; for (const p of planets) if (!p.ast && (!best || p.m0 > best.m0)) best = p; return best; }
+  function framePlanet() { return focus && planets.includes(focus) ? focus : primary(); }   // the chosen planet, else the heaviest
+  function clearTrails() { for (const p of planets) p.trail = []; sun.trail = []; }
+  function setFocus(p) { focus = p; renderLog(); }
+  function cycleFocus() {
+    const list = planets.filter(p => !p.ast).sort((a, b) => relR(a) - relR(b)); if (!list.length) return;
+    setFocus(list[(list.indexOf(framePlanet()) + 1) % list.length]);
+  }
+  function addStrings() {   // lines from the chosen planet to its nearest neighbours by orbit size
+    const F = framePlanet(); if (!F) return;
+    const rf = relR(F), a = viewPoint(F.x, F.y);
+    const others = planets.filter(p => !p.ast && p !== F).sort((u, v) => Math.abs(relR(u) - rf) - Math.abs(relR(v) - rf)).slice(0, 6);
+    for (const P of others) strings.push({ a: [a[0], a[1], ...viewPoint(P.x, P.y)], i: P.note ?? band(relR(P)) });
+    if (strings.length > MAX_STRINGS) strings.splice(0, strings.length - MAX_STRINGS);
+  }
   function lagrange() {   // positions relative to the sun
-    const F = primary(); if (!F || !settings.mass) return null;
+    const F = framePlanet(); if (!F || !settings.mass) return null;
     const rx = F.x - sun.x, ry = F.y - sun.y, r = Math.hypot(rx, ry), ux = rx / r, uy = ry / r;
     const m = massOf(F), mu = m / (GM() + m), h = Math.cbrt(mu / 3);          // h: Hill radius / r
     const dir = Math.sign(rx * (F.vy - sun.vy) - ry * (F.vx - sun.vx)) || 1;  // +1 = clockwise on screen
@@ -756,11 +799,18 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
   const keplerChanged = () => { resetAllKepler(); renderLog(); };
   const syncKepler = segment('kepler', 'kepler', v => v === '1', keplerChanged);
   function setKepler(v) { settings.kepler = v; syncKepler(); keplerChanged(); }
-  const viewChanged = () => { for (const p of planets) p.trail = []; if (settings.view === 'fixed') phi = 0; };
+  const viewChanged = () => { clearTrails(); strings = []; if (settings.view === 'fixed') phi = 0; };
   const syncView = segment('view', 'view', v => v, viewChanged);
   function setView(v) { settings.view = v; syncView(); viewChanged(); }
   const syncLagrange = segment('lagrange', 'lagrange', v => v === '1', () => renderLog());
   function setLagrange(v) { settings.lagrange = v; syncLagrange(); renderLog(); }
+  const stringsChanged = () => { strings = []; lastString = simT; };
+  const syncStrings = segment('strings', 'strings', v => v === '1', stringsChanged);
+  function setStrings(v) { settings.strings = v; syncStrings(); stringsChanged(); }
+  const VIEWS = ['fixed', 'rotating', 'centred'];
+  const pickFrom = e => { const b = e.target.closest('.pick'); if (!b) return; const p = planets.find(q => q.id === Number(b.dataset.id)); if (p) setFocus(p === focus ? null : p); };
+  $('rows').addEventListener('pointerdown', pickFrom);   // pointerdown, because the log redraws several times a second
+  $('rows').addEventListener('click', e => { if (e.detail === 0) pickFrom(e); });   // keyboard
   const slider = (id, outId, key, after) => $(id).addEventListener('input', () => {
     settings[key] = $(id).value / 100; $(outId).textContent = '×' + settings[key].toFixed(2); after && after();
   });
@@ -777,12 +827,16 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     else if (k === 'e') setEinstein(settings.einstein ? 0 : lastEinstein);
     else if (k === 'k') setKepler(!settings.kepler);
     else if (k === 'l') setLagrange(!settings.lagrange);
-    else if (k === 'v') setView(settings.view === 'fixed' ? 'rotating' : 'fixed');
+    else if (k === 'v') setView(VIEWS[(VIEWS.indexOf(settings.view) + 1) % VIEWS.length]);
+    else if (k === 's') setStrings(!settings.strings);
+    else if (k === 'f') cycleFocus();
     else if (k === 't') toggleTune();
   });
 
   // ---- drawing (everything instrument-like is centred on the sun, which can now move) ----
   function drawInstrument() {
+    ctx.save();
+    if (settings.view === 'centred') ctx.globalAlpha = 0.25;   // the sun's instrument dims when we ride on a planet
     const labelsAll = BW * S >= 15;
     ctx.lineWidth = 1;
     for (let k = 0; k <= N; k++) {
@@ -803,6 +857,7 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       ctx.strokeStyle = k === 0 ? 'rgba(212,176,106,.45)' : 'rgba(212,176,106,.22)';
       ctx.beginPath(); ctx.moveTo(SX + m.c * r0, SY + m.s * r0); ctx.lineTo(SX + m.c * r1, SY + m.s * r1); ctx.stroke();
     });
+    if (settings.view === 'centred') { ctx.restore(); return; }   // and loses its labels
     const top = SY - R_MAX * S - 10;
     ctx.font = '500 9.5px "IBM Plex Mono", ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(212,176,106,.8)';
@@ -814,17 +869,20 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       upright(noteName(NOTES[i]), SX - 7, SY - (R_MAX - (i + 0.5) * BW) * S);
     }
     ctx.textBaseline = 'alphabetic';
+    ctx.restore();
   }
   function drawModes() {   // drawn level, under the sun, after the view rotation is undone
     const modes = [];
     if (settings.einstein) modes.push(`R E L A T I V I T Y   ·   ${EINSTEIN_DEG[settings.einstein]}°  P E R  O R B I T  A T  1  A U`);
     if (settings.kepler) modes.push('K E P L E R   ·   E Q U A L   T I M E S ,   E Q U A L   A R E A S');
-    if (settings.view === 'rotating') modes.push('R O T A T I N G   V I E W');
+    const F = framePlanet(), nm = F ? spaced(F.name) : '';
+    if (F && settings.view === 'rotating') modes.push('T U R N I N G   W I T H   ' + nm);
+    if (F && settings.view === 'centred') modes.push('S E E N   F R O M   ' + nm);
+    if (F && settings.strings) modes.push('S T R I N G S   F R O M   ' + nm);
     if (!modes.length) return;
-    const [sx, sy] = screenOf(sun.x, sun.y);
     ctx.font = '500 9.5px "IBM Plex Mono", ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(212,176,106,.8)';
-    modes.forEach((t, k) => ctx.fillText(t, sx, sy + R_MAX * S + 22 + k * 15));
+    modes.forEach((t, k) => ctx.fillText(t, cx, cy + R_MAX * S + 22 + k * 15));
   }
   function drawLagrange() {
     if (!settings.lagrange) return;
@@ -919,26 +977,53 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
       ctx.textBaseline = 'alphabetic';
     }
   }
+  function strokeTrail(tr, width, color, alphaScale) {   // ~30 chunks fading toward the tail; long trails keep a faint floor
+    const n = tr.length / 2, long = n > TRAIL + 10, O = viewOrigin();
+    if (n < 2) return;
+    ctx.lineWidth = long ? width * 0.8 : width; ctx.strokeStyle = color;
+    const CH = Math.max(1, Math.ceil(n / 30));
+    for (let k0 = 0; k0 < n - 1; k0 += CH) {
+      const k1 = Math.min(n - 1, k0 + CH), t = (k0 + k1) / 2 / n;
+      ctx.globalAlpha = (long ? 0.07 + 0.48 * t * t : t * 0.55) * alphaScale;
+      let [x, y] = toCanvas(O.x + tr[2 * k0], O.y + tr[2 * k0 + 1]);
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let k = k0 + 1; k <= k1; k++) { [x, y] = toCanvas(O.x + tr[2 * k], O.y + tr[2 * k + 1]); ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
   function drawTrails() {   // drawn without the view rotation: each point is stored as it looked when recorded
+    const longT = settings.einstein || settings.view !== 'fixed' ? TRAIL_LONG : TRAIL;
     for (const p of planets) {
-      const maxT = p.ast ? AST_TRAIL : settings.einstein ? TRAIL_LONG : TRAIL;
+      const maxT = p.ast ? AST_TRAIL : longT;
       if (!paused && (!p.ast || (p.tk = (p.tk || 0) + 1) % 2 === 0)) p.trail.push(...viewPoint(p.x, p.y));
       if (p.trail.length > maxT * 2) p.trail.splice(0, p.trail.length - maxT * 2);
-      const tr = p.trail, n = tr.length / 2, long = n > TRAIL + 10;
-      if (n < 2) continue;
-      // trail drawn in ~30 chunks, fading toward the tail; long trails keep a faint floor
-      if (p.ast) { ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(200,196,224,1)'; }
-      else { ctx.lineWidth = long ? 1.1 : 1.4; ctx.strokeStyle = col(p.note ?? band(relR(p)), 1); }
-      const CH = Math.max(1, Math.ceil(n / 30));
-      for (let k0 = 0; k0 < n - 1; k0 += CH) {
-        const k1 = Math.min(n - 1, k0 + CH), t = (k0 + k1) / 2 / n;
-        ctx.globalAlpha = (long ? 0.07 + 0.48 * t * t : t * 0.55) * (p.ast ? 0.6 : 1);
-        let [x, y] = toCanvas(tr[2 * k0], tr[2 * k0 + 1]);
-        ctx.beginPath(); ctx.moveTo(x, y);
-        for (let k = k0 + 1; k <= k1; k++) { [x, y] = toCanvas(tr[2 * k], tr[2 * k + 1]); ctx.lineTo(x, y); }
-        ctx.stroke();
+      if (p.ast) strokeTrail(p.trail, 0.8, 'rgba(200,196,224,1)', 0.6);
+      else strokeTrail(p.trail, 1.4, col(p.note ?? band(relR(p)), 1), 1);
+    }
+    if (settings.view === 'centred') {   // seen from a planet, the sun has a path across the sky too
+      if (!paused) sun.trail.push(...viewPoint(sun.x, sun.y));
+      if (sun.trail.length > TRAIL_LONG * 2) sun.trail.splice(0, sun.trail.length - TRAIL_LONG * 2);
+      strokeTrail(sun.trail, 1.6, 'rgba(250,206,120,1)', 0.9);
+    }
+  }
+  function drawStrings() {   // grouped by colour and age so a few thousand lines cost a few dozen strokes
+    if (!strings.length) return;
+    const O = viewOrigin(), B = 8, len = strings.length, groups = new Map();
+    strings.forEach((L, k) => {
+      const key = L.i * B + Math.min(B - 1, Math.floor(k / len * B));
+      let g = groups.get(key); if (!g) groups.set(key, g = []); g.push(L.a);
+    });
+    ctx.lineWidth = 0.6;
+    for (const [key, list] of groups) {
+      const i = Math.floor(key / B), b = key % B;
+      ctx.strokeStyle = col(i, 0.04 + 0.26 * (b + 1) / B, 74);
+      ctx.beginPath();
+      for (const a of list) {
+        const [x0, y0] = toCanvas(O.x + a[0], O.y + a[1]), [x1, y1] = toCanvas(O.x + a[2], O.y + a[3]);
+        ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
       }
-      ctx.globalAlpha = 1;
+      ctx.stroke();
     }
   }
   function drawBodies(dt) {
@@ -1037,13 +1122,15 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     text.innerHTML = `The sun circles the centre of mass, up to <strong>${(max / AU).toPrecision(2)} au</strong> away. Shown <strong>×${fmtMag(k / S)}</strong>.`;
   }
   function renderLog() {
+    const FP = framePlanet();
     const list = planets.filter(p => !p.ast).map(p => ({ p, r: relR(p) })).sort((a, b) => a.r - b.r);
-    $('rows').innerHTML = list.length ? list.map(({ p, r }) => {
+    const html = list.length ? list.map(({ p, r }) => {
       const i = p.note ?? band(r);
       const spread = settings.kepler ? areaSpread(p) : null;
       const last = settings.kepler ? (spread == null ? '…' : '±' + spread.toFixed(spread < 1 ? 2 : 1) + '%') : settings.einstein ? (p.shift == null ? '…' : (p.shift >= 0 ? '+' : '') + p.shift.toFixed(1) + '°') : (r / AU).toFixed(2) + ' au';
-      return `<tr><td title="${esc(p.name)}"><span class="dot" style="background:${col(i)}"></span>${esc(p.name)}</td><td>${noteName(NOTES[i])}</td><td>${p.period ? (p.period / settings.tempo).toFixed(2) + ' s' : '…'}</td><td>${last}</td></tr>`;
+      return `<tr><td><button type="button" class="pick" data-id="${p.id}" aria-pressed="${p === FP}" title="${esc(p.name)}"><span class="dot" style="background:${col(i)}"></span>${esc(p.name)}</button></td><td>${noteName(NOTES[i])}</td><td>${p.period ? (p.period / settings.tempo).toFixed(2) + ' s' : '…'}</td><td>${last}</td></tr>`;
     }).join('') : '<tr><td colspan="4" class="empty">The sky is empty. Drag anywhere to throw a planet.</td></tr>';
+    if (html !== lastRows) { $('rows').innerHTML = html; lastRows = html; }
     $('count').textContent = list.length;
     const L = settings.lagrange ? lagrange() : null, lag = $('lagLine');
     lag.hidden = !settings.lagrange;
@@ -1070,15 +1157,21 @@ output{min-width:3.4em;font-variant-numeric:tabular-nums;color:var(--brass);font
     } else acc = 0;
     const c = com();
     if (!paused && planets.length) { sun.path.push(sun.x - c.x, sun.y - c.y); if (sun.path.length > 1800) sun.path.splice(0, 2); }
-    const f = Math.min(1, d * 3);            // the camera eases toward the centre of mass
-    cam.x += (c.x - cam.x) * f; cam.y += (c.y - cam.y) * f;
+    const FR = framePlanet();
+    if ((FR && FR.id) !== lastFrameId) {   // a different chosen planet: old trails and strings no longer apply
+      lastFrameId = FR && FR.id; strings = [];
+      if (settings.view !== 'fixed') clearTrails();
+    }
+    if (settings.view === 'centred' && FR) { cam.x = FR.x; cam.y = FR.y; }   // riding on the planet
+    else { const f = Math.min(1, d * 3); cam.x += (c.x - cam.x) * f; cam.y += (c.y - cam.y) * f; }   // easing toward the centre of mass
     [SX, SY] = toCanvas(sun.x, sun.y);
     if (settings.view === 'rotating') {   // keep the heaviest planet at the top
-      const F = primary(); if (F) phi = -Math.PI / 2 - Math.atan2(F.y - sun.y, F.x - sun.x);
+      if (FR) phi = -Math.PI / 2 - Math.atan2(FR.y - sun.y, FR.x - sun.x);
     } else phi = 0;
+    if (!paused && settings.strings && simT - lastString >= STRING_DT) { lastString = simT; addStrings(); }
     sunPulse = Math.max(0, sunPulse - d * 1.5);
     ctx.drawImage(stars, 0, 0, W, H);
-    drawTrails();
+    drawStrings(); drawTrails();
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(phi); ctx.translate(-cx, -cy);
     drawInstrument(); drawWedges(); drawLagrange(); drawBeams(d); drawRipples(d); drawSun(); drawBodies(d); drawAim();
     ctx.restore();

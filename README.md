@@ -24,6 +24,8 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 | Einstein's rosettes | Three eccentric orbits with relativity turned up. Each ellipse slowly turns, so its meridian note walks through the scale. |
 | Kepler's laws | One very eccentric planet and one circular planet with Kepler mode on. Equal-time wedges have equal areas; the ticks rush together near the sun. |
 | Jupiter's Trojans | A heavy Jupiter with two camps of asteroids at its L4 and L5 points, seen from a camera that turns with it. The asteroids loop in tadpoles and strum softly as they pass the meridian. |
+| Dance of Venus | Venus and Earth with Strings on. In 8 Earth years (about 30 seconds) the lines between them weave a five-petal rose. |
+| Ptolemy's sky | Venus, Earth and Mars seen from Earth. The Sun circles us, Venus traces its five-petal rose, and Mars loops backwards. |
 | Random resonant chain | A new set of simple period ratios each time. |
 
 ## Tune panel
@@ -35,8 +37,11 @@ Each preset uses real period ratios, so you hear its actual rhythm.
 - **Planet mass**: None (weightless), Real (true mass ratios), ×10 or ×100. Heavier planets tug on each other and on the sun, and resonant systems drift into chaos.
 - **Einstein**: Off, 3°, 10° or 30° of perihelion turn per orbit at 1 au. See below.
 - **Kepler**: shows equal-time wedges and a ticking 30° dial. See below.
-- **View**: Fixed, or Rotating, where the camera turns with the heaviest planet so it stays at the top.
-- **Lagrange**: marks the five Lagrange points of the heaviest planet. See below.
+- **View**: Fixed; Rotating, where the camera turns with the chosen planet so it stays at the top; or From planet, where the camera rides on it without turning.
+- **Lagrange**: marks the five Lagrange points of the chosen planet. See below.
+- **Strings**: draws faint lines from the chosen planet to its neighbours. See below.
+
+**Choosing a planet:** click a planet's name in the orbit log, or press F to step through them. The view, Lagrange points and strings all follow it. Until you choose, the heaviest planet is used.
 
 ## Einstein mode
 
@@ -67,6 +72,13 @@ Around any planet there are five places where a small body can keep pace with it
 - The preset's Jupiter is 10 times its real mass, so a tadpole loop takes about 20 seconds instead of about 150 years. The measured loop time matches theory, T / √(27μ/4), within 3%.
 - Horseshoe orbits, which swing around L3 between L4 and L5, are only stable around much lighter planets, about 30 times lighter than this Jupiter. Real examples orbit with Earth and with Saturn's moons Janus and Epimetheus. Around a planet that light a horseshoe would take many minutes to trace, so the orrery leaves them out.
 
+## Planetary roses
+
+Two old ways of drawing the solar system, both of which turn orbits into flowers.
+
+- **Strings.** Every 0.05 s of orbit time, a faint line joins the chosen planet to its nearest neighbours. Venus goes round the Sun 13 times while Earth goes round 8, so every 8 years the pair line up in the same five places, and the lines weave a five-petal rose. Try it in **Dance of Venus**. The meetings measured in the simulation land about 144° apart, which traces a pentagram.
+- **From planet.** The camera rides on a planet without turning, which is how the sky looks from Earth. The Sun circles once a year, and other planets appear to stop and loop backwards whenever one overtakes the other. Ancient astronomers saw these retrograde loops, and Ptolemy explained them with circles on circles. In **Ptolemy's sky**, Venus loops backwards 5 times in 8 years, tracing its rose, and Mars loops about every 2 years. Measured in the simulation over 8 Earth years: Venus 5.0, Mars 3.5 and Mercury 25.5 loops, against about 5, 3.7 and 25 from their real orbital periods. Mercury is left out of the preset because its loops fill the middle; add it yourself to see.
+
 ## Keyboard
 
 | Key | Action |
@@ -78,7 +90,9 @@ Around any planet there are five places where a small body can keep pace with it
 | E | Einstein mode on / off |
 | K | Kepler mode on / off |
 | L | Lagrange points on / off |
-| V | Fixed or rotating view |
+| S | Strings on / off |
+| V | Next view: fixed, rotating, from planet |
+| F | Choose the next planet |
 | T | Open the tune panel |
 
 ## How it works
@@ -87,7 +101,8 @@ Around any planet there are five places where a small body can keep pace with it
 - Presets use real mass ratios: Jupiter's moons relative to Jupiter, the TRAPPIST-1 planets relative to their red dwarf, Mercury to Mars relative to the Sun. The twelve-beat system uses Neptune-sized planets so its rhythm holds.
 - The camera follows the system's centre of mass, so the sun visibly moves. The **Sun wobble** plot in the orbit log traces its path, magnified. Measuring this wobble is how astronomers found many real exoplanets.
 - Einstein mode adds the first post-Newtonian correction to the sun's pull, F = GMm/r² · (1 + 3L²/(c²r²)), where L is the planet's angular momentum per unit mass. The speed of light c is set so a circular orbit at 1 au turns by the chosen angle per lap. Circular orbits placed with a tap get the slightly higher speed this extra pull needs, so they stay circular.
-- The rotating view turns the canvas so the heaviest planet stays at the top. Trails are stored as they looked when drawn, so they show paths in the rotating frame, which is where tadpoles appear. Text stays level.
+- The rotating view turns the canvas so the chosen planet stays at the top; the from-planet view moves the camera onto it. Trails are stored as they looked when drawn, so they show paths in the rotating frame, which is where tadpoles appear. Text stays level.
+- Strings keep the last 2,400 lines, drawn in a few dozen strokes grouped by colour and age so they cost little to draw.
 - A chime fires when a planet's position changes sign relative to a meridian ray. The note comes from the planet's distance at that moment, mapped onto 15 bands of the chosen scale.
 - Sound is pure Web Audio: FM bells, a generated reverb impulse, stereo panning by pitch, and a compressor on the master bus. Asteroids play quiet glass notes an octave up, so a swarm crossing the meridian sounds like a strum.
 

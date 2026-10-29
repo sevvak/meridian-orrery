@@ -20,7 +20,7 @@ We build one step at a time. Each step is one release: it ships on GitHub Pages,
 ## Milestone B — Three-body physics
 
 - [x] **4. Lagrange points and Trojans.** L1–L5 marked for the heaviest planet, tap-to-drop asteroid swarms, a rotating view, a live stability readout and the Jupiter's Trojans preset. Asteroids at L4/L5 trace tadpoles. Horseshoes were left out: they are only stable around planets about 30× lighter, where they would take many minutes to trace.
-- [ ] **5. Planetary roses.** The rotating view (added in step 4) can turn with any planet you choose, and a spirograph mode draws lines between two planets. Earth–Venus draws the five-petal rose.
+- [x] **5. Planetary roses.** Choose any planet from the orbit log; a From planet view that rides on it (the geocentric sky, with retrograde loops); a Strings mode whose lines weave roses; and the Dance of Venus and Ptolemy's sky presets.
 - [ ] **6. Moons.** Planets carry moons that chime an octave higher.
 
 ## Milestone C — A wilder sky
