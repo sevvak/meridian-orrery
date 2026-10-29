@@ -8,6 +8,7 @@ It is a single `index.html` file with no build step and no dependencies beyond t
 
 - **Drag** anywhere to throw a planet. A dotted line predicts its path and shows the note it will play.
 - **Tap** empty sky to drop a planet into a perfect circular orbit.
+- To launch **comets** instead, set Throw to Comet in Tune, or hold Shift while you drag. A tap in comet mode starts a stretched orbit from that point.
 - **Tap a planet** to choose it. A dashed ring and its name appear, and a bar offers **Add moon**, **Ride along** and **Remove**. Tap it again, or press Esc, to let go.
 - Press **?** for a short How to play card.
 - When most of the planets line up on one ray from the sun, a **conjunction** fires a beam through them and plays a chord.
@@ -28,6 +29,7 @@ The Systems menu is grouped into rhythms, real systems and lessons. Each preset 
 | Jupiter's Trojans | A heavy Jupiter with two camps of asteroids at its L4 and L5 points, seen from a camera that turns with it. The asteroids loop in tadpoles and strum softly as they pass the meridian. |
 | Dance of Venus | Venus and Earth with Strings on. In 8 Earth years (about 30 seconds) the lines between them weave a five-petal rose. |
 | Ptolemy's sky | Venus, Earth and Mars seen from Earth. The Sun circles us, Venus traces its five-petal rose, and Mars loops backwards. |
+| Comets | Halley (going round backwards, as the real one does), Encke and a sungrazer among Earth and Jupiter. Each strums the rings as it falls in and climbs back out. |
 | Random resonant chain | A new set of simple period ratios each time. |
 
 ## Tune
@@ -93,6 +95,16 @@ Choose a planet and press **Add moon** (or press O). A planet holds up to three.
 - In **Moons of Earth and Jupiter**, the simulation gives 12.2 full moons per Earth year (the real figure is 12.4), and Io, Europa and Ganymede keep close to their 1 : 2 : 4 rhythm.
 - Planets close to the sun orbit too fast for the simulation's 240 steps per second to follow a moon, so they refuse one and say why. Moons also leave if planets become weightless or a planet passes too close.
 
+## Comets
+
+Comets are icy, weightless bodies on long, stretched orbits.
+
+- **They strum the rings.** Crossing one of the instrument's rings plays its note on a harp-like voice. A comet falling toward the sun crosses them faster and faster, so you hear a quickening rising run, then a falling one as it climbs back out. A comet that crosses every ring plays 30 notes per pass.
+- **Two tails, both pointing away from the sun.** The blue ion tail is gas blown straight outward by the solar wind. The dust tail is grains pushed by sunlight, which weakens the sun's pull on them, so they drift outward and curve behind the comet. Both grow as the comet nears the sun and vanish far out.
+- **Each pass costs ice.** Comets that come close to the sun lose ice every pass, and after many passes the tail fades and only a dark lump remains, as happens to real comets over thousands of orbits (sped up here). The orbit log shows ice left, closest approach and passes.
+- **Finer time steps.** A comet near the sun moves too fast for 240 steps per second, so each comet takes up to 48 smaller steps of its own, using the sun's and planets' positions in between. Over 20 orbits of the sungrazer, this cuts the false turning of its ellipse from 4.1° to 0.13°, which matters for Einstein mode.
+- You can choose a comet and ride along on it, but it is too small to hold moons or have Lagrange points.
+
 ## Keyboard
 
 | Key | Action |
@@ -110,6 +122,7 @@ Choose a planet and press **Add moon** (or press O). A planet holds up to three.
 | O | Add a moon to the chosen planet |
 | Delete | Remove the chosen planet |
 | Esc | Close the top panel, or let go of the chosen planet |
+| Shift-drag | Throw a comet |
 | ? | How to play |
 | T | Open the tune panel |
 

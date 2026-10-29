@@ -27,7 +27,7 @@ We build one step at a time. Each step is one release: it ships on GitHub Pages,
 
 ## Milestone C — A wilder sky
 
-- [ ] **7. Comets.** Eccentric orbits, tails pointing away from the sun, a sweep of notes at closest approach.
+- [x] **7. Comets.** Weightless comets with their own finer time steps; blue ion tails and curved dust tails pointing away from the sun; ring strums that rise and fall with each pass; ice that runs out; Throw: Comet and Shift-drag; the Comets preset with a backwards Halley.
 - [ ] **8. Collisions and the Roche limit.** Touching planets merge into a lower note; planets too close to the sun break into a ring.
 - [ ] **9. Binary stars.** Two suns, a "Tatooine" preset, and a visible edge between chaotic and stable orbits.
 - [ ] **10. Star types and habitable zone.** Red dwarf, Sun-like star or blue giant, each with its own mass, color, key and habitable zone.
